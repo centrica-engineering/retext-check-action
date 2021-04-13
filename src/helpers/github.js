@@ -23,7 +23,8 @@ export async function getChangedPRFiles(
 export async function getChangedFiles(
   client,
   repo,
-  owner
+  owner,
+  pr
 ) {
   try {
     let files = await getChangedPRFiles(client, repo, owner, pr)

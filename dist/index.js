@@ -16180,7 +16180,8 @@ async function getChangedPRFiles(
 async function getChangedFiles(
   client,
   repo,
-  owner
+  owner,
+  pr
 ) {
   try {
     let files = await getChangedPRFiles(client, repo, owner, pr)
