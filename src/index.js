@@ -20,6 +20,8 @@ const github_token = core.getInput('github_token');
 const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
 const pull_request = github.context.payload.pull_request.number;
 
+import fs from 'fs';
+
 if (!github_token) {
   core.warning('Github token was not set');
 }
@@ -31,6 +33,9 @@ const octokit = github.getOctokit(github_token);
 
   filesChanged.forEach((PRFile) => {
     if (PRFile.endsWith('.md') || PRFile.endsWith('.markdown')) {
+      console.log(PRFile);
+      const data = fs.readFileSync(PRFile, { encoding: 'utf8', flag: 'r' });
+
       retext()
         .use(english)
         .use(equality)
@@ -40,7 +45,7 @@ const octokit = github.getOctokit(github_token);
         .use(repeated)
         .use(indefiniteArticle)
         .use(stringify)
-        .process(vfile.readSync(PRFile), (err, file) => {
+        .process(data, (err, file) => {
           const body = report(err || file);
           console.error(body);
 

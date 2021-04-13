@@ -13732,7 +13732,7 @@ function syllable(value) {
 
 "use strict";
 
-module.exports = __nccwpck_require__(8796)
+/* unused reexport */ __nccwpck_require__(8796)
 
 
 /***/ }),
@@ -16196,7 +16196,6 @@ var retext = __nccwpck_require__(6959);
 var retext_default = /*#__PURE__*/__nccwpck_require__.n(retext);
 // EXTERNAL MODULE: ./node_modules/to-vfile/index.js
 var to_vfile = __nccwpck_require__(1838);
-var to_vfile_default = /*#__PURE__*/__nccwpck_require__.n(to_vfile);
 // EXTERNAL MODULE: ./node_modules/retext-spell/index.js
 var retext_spell = __nccwpck_require__(8755);
 var retext_spell_default = /*#__PURE__*/__nccwpck_require__.n(retext_spell);
@@ -16227,6 +16226,9 @@ var dictionary_en_gb_default = /*#__PURE__*/__nccwpck_require__.n(dictionary_en_
 // EXTERNAL MODULE: ./node_modules/vfile-reporter/index.js
 var vfile_reporter = __nccwpck_require__(8366);
 var vfile_reporter_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter);
+// EXTERNAL MODULE: external "fs"
+var external_fs_ = __nccwpck_require__(5747);
+var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
 ;// CONCATENATED MODULE: ./src/index.js
 
 const github = __nccwpck_require__(245);
@@ -16250,6 +16252,8 @@ const github_token = core.getInput('github_token');
 const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
 const pull_request = github.context.payload.pull_request.number;
 
+
+
 if (!github_token) {
   core.warning('Github token was not set');
 }
@@ -16261,6 +16265,9 @@ const octokit = github.getOctokit(github_token);
 
   filesChanged.forEach((PRFile) => {
     if (PRFile.endsWith('.md') || PRFile.endsWith('.markdown')) {
+      console.log(PRFile);
+      const data = external_fs_default().readFileSync(PRFile, { encoding: 'utf8', flag: 'r' });
+
       retext_default()()
         .use((retext_english_default()))
         .use((retext_equality_default()))
@@ -16270,7 +16277,7 @@ const octokit = github.getOctokit(github_token);
         .use((retext_repeated_words_default()))
         .use((retext_indefinite_article_default()))
         .use((retext_stringify_default()))
-        .process(to_vfile_default().readSync(PRFile), (err, file) => {
+        .process(data, (err, file) => {
           const body = vfile_reporter_default()(err || file);
           console.error(body);
 
