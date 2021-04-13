@@ -4,7 +4,6 @@ const core = require('@actions/core');
 
 import { getChangedFiles } from './helpers/github.js';
 import retext from 'retext';
-import vfile from 'to-vfile';
 import spell from 'retext-spell';
 import english from 'retext-english';
 import contractions from 'retext-contractions';
@@ -41,7 +40,7 @@ const octokit = github.getOctokit(github_token);
         .use(equality)
         .use(contractions, { straight: true })
         .use(readability, { age: 20 })
-        // .use(spell, { dictionary, normalizeApostrophes: false, max: 100 })
+        .use(spell, { dictionary, normalizeApostrophes: false, max: 100 })
         .use(repeated)
         .use(indefiniteArticle)
         .use(stringify)

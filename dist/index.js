@@ -13727,193 +13727,6 @@ function syllable(value) {
 
 /***/ }),
 
-/***/ 1838:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-/* unused reexport */ __nccwpck_require__(8796)
-
-
-/***/ }),
-
-/***/ 3748:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var fs = __nccwpck_require__(5747)
-var path = __nccwpck_require__(5622)
-var vfile = __nccwpck_require__(7053)
-
-exports.read = read
-exports.write = write
-
-// Create a virtual file and read it in, asynchronously.
-function read(description, options, callback) {
-  var file = vfile(description)
-
-  if (!callback && typeof options === 'function') {
-    callback = options
-    options = null
-  }
-
-  if (!callback) {
-    return new Promise(executor)
-  }
-
-  executor(resolve, callback)
-
-  function resolve(result) {
-    callback(null, result)
-  }
-
-  function executor(resolve, reject) {
-    var fp
-
-    try {
-      fp = path.resolve(file.cwd, file.path)
-    } catch (error) {
-      return reject(error)
-    }
-
-    fs.readFile(fp, options, done)
-
-    function done(error, res) {
-      if (error) {
-        reject(error)
-      } else {
-        file.contents = res
-        resolve(file)
-      }
-    }
-  }
-}
-
-// Create a virtual file and write it out, asynchronously.
-function write(description, options, callback) {
-  var file = vfile(description)
-
-  // Weird, right? Otherwise `fs` doesn’t accept it.
-  if (!callback && typeof options === 'function') {
-    callback = options
-    options = undefined
-  }
-
-  if (!callback) {
-    return new Promise(executor)
-  }
-
-  executor(resolve, callback)
-
-  function resolve(result) {
-    callback(null, result)
-  }
-
-  function executor(resolve, reject) {
-    var fp
-
-    try {
-      fp = path.resolve(file.cwd, file.path)
-    } catch (error) {
-      return reject(error)
-    }
-
-    fs.writeFile(fp, file.contents || '', options, done)
-
-    function done(error) {
-      if (error) {
-        reject(error)
-      } else {
-        resolve(file)
-      }
-    }
-  }
-}
-
-
-/***/ }),
-
-/***/ 7053:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var buffer = __nccwpck_require__(3670)
-var vfile = __nccwpck_require__(9082)
-
-module.exports = toVFile
-
-// Create a virtual file from a description.  If `options` is a string or a
-// buffer, it’s used as the path.  In all other cases, the options are passed
-// through to `vfile()`.
-function toVFile(options) {
-  if (typeof options === 'string' || buffer(options)) {
-    options = {path: String(options)}
-  }
-
-  return vfile(options)
-}
-
-
-/***/ }),
-
-/***/ 8796:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var vfile = __nccwpck_require__(7053)
-var sync = __nccwpck_require__(3905)
-var async = __nccwpck_require__(3748)
-
-module.exports = vfile
-
-vfile.read = async.read
-vfile.readSync = sync.read
-vfile.write = async.write
-vfile.writeSync = sync.write
-
-
-/***/ }),
-
-/***/ 3905:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-
-var fs = __nccwpck_require__(5747)
-var path = __nccwpck_require__(5622)
-var vfile = __nccwpck_require__(7053)
-
-exports.read = readSync
-exports.write = writeSync
-
-// Create a virtual file and read it in, synchronously.
-function readSync(description, options) {
-  var file = vfile(description)
-  file.contents = fs.readFileSync(path.resolve(file.cwd, file.path), options)
-  return file
-}
-
-// Create a virtual file and write it out, synchronously.
-function writeSync(description, options) {
-  var file = vfile(description)
-  fs.writeFileSync(
-    path.resolve(file.cwd, file.path),
-    file.contents || '',
-    options
-  )
-  return file
-}
-
-
-/***/ }),
-
 /***/ 1232:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -16194,10 +16007,9 @@ async function getChangedFiles(
 // EXTERNAL MODULE: ./node_modules/retext/index.js
 var retext = __nccwpck_require__(6959);
 var retext_default = /*#__PURE__*/__nccwpck_require__.n(retext);
-// EXTERNAL MODULE: ./node_modules/to-vfile/index.js
-var to_vfile = __nccwpck_require__(1838);
 // EXTERNAL MODULE: ./node_modules/retext-spell/index.js
 var retext_spell = __nccwpck_require__(8755);
+var retext_spell_default = /*#__PURE__*/__nccwpck_require__.n(retext_spell);
 // EXTERNAL MODULE: ./node_modules/retext-english/index.js
 var retext_english = __nccwpck_require__(6206);
 var retext_english_default = /*#__PURE__*/__nccwpck_require__.n(retext_english);
@@ -16221,6 +16033,7 @@ var retext_stringify = __nccwpck_require__(7715);
 var retext_stringify_default = /*#__PURE__*/__nccwpck_require__.n(retext_stringify);
 // EXTERNAL MODULE: ./node_modules/dictionary-en-gb/index.js
 var dictionary_en_gb = __nccwpck_require__(7161);
+var dictionary_en_gb_default = /*#__PURE__*/__nccwpck_require__.n(dictionary_en_gb);
 // EXTERNAL MODULE: ./node_modules/vfile-reporter/index.js
 var vfile_reporter = __nccwpck_require__(8366);
 var vfile_reporter_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter);
@@ -16234,7 +16047,6 @@ var external_path_default = /*#__PURE__*/__nccwpck_require__.n(external_path_);
 
 const github = __nccwpck_require__(245);
 const core = __nccwpck_require__(9326);
-
 
 
 
@@ -16274,7 +16086,7 @@ const octokit = github.getOctokit(github_token);
         .use((retext_equality_default()))
         .use((retext_contractions_default()), { straight: true })
         .use((retext_readability_default()), { age: 20 })
-        // .use(spell, { dictionary, normalizeApostrophes: false, max: 100 })
+        .use((retext_spell_default()), { dictionary: (dictionary_en_gb_default()), normalizeApostrophes: false, max: 100 })
         .use((retext_repeated_words_default()))
         .use((retext_indefinite_article_default()))
         .use((retext_stringify_default()))
