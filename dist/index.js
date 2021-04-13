@@ -16269,7 +16269,7 @@ const octokit = github.getOctokit(github_token);
 
   filesChanged.forEach((PRFile) => {
     if (PRFile.endsWith('.md') || PRFile.endsWith('.markdown')) {
-      console.log(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile));
+      console.log(process.env.GITHUB_WORKSPACE, PRFile);
       const data = external_fs_default().readFileSync(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile), { encoding: 'utf8', flag: 'r' });
 
       retext_default()()
