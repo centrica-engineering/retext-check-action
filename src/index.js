@@ -2,7 +2,7 @@
 const github = require('@actions/github');
 const core = require('@actions/core');
 
-import { getChangedFiles } from './helpers/github';
+import { getChangedFiles } from './helpers/github.js';
 import retext from 'retext';
 import vfile from 'to-vfile';
 import spell from 'retext-spell';
