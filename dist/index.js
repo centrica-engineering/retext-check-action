@@ -16270,7 +16270,7 @@ const octokit = github.getOctokit(github_token);
   filesChanged.forEach((PRFile) => {
     if (PRFile.endsWith('.md') || PRFile.endsWith('.markdown')) {
       console.log('workspace::', process.env.GITHUB_WORKSPACE, 'file::', PRFile);
-      const data = external_fs_default().readFileSync(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile), { encoding: 'utf8', flag: 'r' }).catch(e => console.log(e));
+      const data = external_fs_default().readFileSync(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile), { encoding: 'utf8', flag: 'r' });
       console.log(data);
       retext_default()()
         .use((retext_english_default()))
