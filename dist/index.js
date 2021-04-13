@@ -16229,6 +16229,9 @@ var vfile_reporter_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter);
 // EXTERNAL MODULE: external "fs"
 var external_fs_ = __nccwpck_require__(5747);
 var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
+// EXTERNAL MODULE: external "path"
+var external_path_ = __nccwpck_require__(5622);
+var external_path_default = /*#__PURE__*/__nccwpck_require__.n(external_path_);
 ;// CONCATENATED MODULE: ./src/index.js
 
 const github = __nccwpck_require__(245);
@@ -16254,6 +16257,7 @@ const pull_request = github.context.payload.pull_request.number;
 
 
 
+
 if (!github_token) {
   core.warning('Github token was not set');
 }
@@ -16265,8 +16269,8 @@ const octokit = github.getOctokit(github_token);
 
   filesChanged.forEach((PRFile) => {
     if (PRFile.endsWith('.md') || PRFile.endsWith('.markdown')) {
-      console.log(PRFile);
-      const data = external_fs_default().readFileSync(PRFile, { encoding: 'utf8', flag: 'r' });
+      console.log(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile));
+      const data = external_fs_default().readFileSync(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile), { encoding: 'utf8', flag: 'r' });
 
       retext_default()()
         .use((retext_english_default()))
