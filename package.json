@@ -1,0 +1,30 @@
+{
+  "name": "retext-check-action",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "rm -rf dist && npx @vercel/ncc build src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actions/core": "^1.2.6",
+    "@actions/github": "^4.0.0",
+    "dictionary-en-gb": "^2.3.0",
+    "retext": "^7.0.1",
+    "retext-contractions": "^4.0.0",
+    "retext-english": "^3.0.4",
+    "retext-equality": "^5.7.0",
+    "retext-indefinite-article": "^2.0.3",
+    "retext-readability": "^6.0.0",
+    "retext-repeated-words": "^3.0.0",
+    "retext-spell": "^4.0.1",
+    "retext-stringify": "^2.0.4",
+    "retext-usage": "^0.5.0",
+    "to-vfile": "^6.1.0",
+    "vfile-reporter": "^6.0.2"
+  }
+}
