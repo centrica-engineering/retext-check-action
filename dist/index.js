@@ -16198,7 +16198,6 @@ var retext_default = /*#__PURE__*/__nccwpck_require__.n(retext);
 var to_vfile = __nccwpck_require__(1838);
 // EXTERNAL MODULE: ./node_modules/retext-spell/index.js
 var retext_spell = __nccwpck_require__(8755);
-var retext_spell_default = /*#__PURE__*/__nccwpck_require__.n(retext_spell);
 // EXTERNAL MODULE: ./node_modules/retext-english/index.js
 var retext_english = __nccwpck_require__(6206);
 var retext_english_default = /*#__PURE__*/__nccwpck_require__.n(retext_english);
@@ -16222,7 +16221,6 @@ var retext_stringify = __nccwpck_require__(7715);
 var retext_stringify_default = /*#__PURE__*/__nccwpck_require__.n(retext_stringify);
 // EXTERNAL MODULE: ./node_modules/dictionary-en-gb/index.js
 var dictionary_en_gb = __nccwpck_require__(7161);
-var dictionary_en_gb_default = /*#__PURE__*/__nccwpck_require__.n(dictionary_en_gb);
 // EXTERNAL MODULE: ./node_modules/vfile-reporter/index.js
 var vfile_reporter = __nccwpck_require__(8366);
 var vfile_reporter_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter);
@@ -16277,7 +16275,7 @@ const octokit = github.getOctokit(github_token);
         .use((retext_equality_default()))
         .use((retext_contractions_default()))
         .use((retext_readability_default()), { age: 20 })
-        .use((retext_spell_default()), { dictionary: (dictionary_en_gb_default()), normalizeApostrophes: false, max: 100 })
+        // .use(spell, { dictionary, normalizeApostrophes: false, max: 100 })
         .use((retext_repeated_words_default()))
         .use((retext_indefinite_article_default()))
         .use((retext_stringify_default()))

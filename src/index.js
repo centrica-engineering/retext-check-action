@@ -42,7 +42,7 @@ const octokit = github.getOctokit(github_token);
         .use(equality)
         .use(contractions)
         .use(readability, { age: 20 })
-        .use(spell, { dictionary, normalizeApostrophes: false, max: 100 })
+        // .use(spell, { dictionary, normalizeApostrophes: false, max: 100 })
         .use(repeated)
         .use(indefiniteArticle)
         .use(stringify)
