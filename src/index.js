@@ -18,7 +18,7 @@ import report from 'vfile-reporter';
 
 const github_token = core.getInput('github_token');
 const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-const pull_request = github.context.payload.pull_request;
+const pull_request = github.context.payload.pull_request.number;
 
 if (!github_token) {
   core.warning('Github token was not set');
@@ -27,7 +27,7 @@ if (!github_token) {
 const octokit = github.getOctokit(github_token);
 
 (async () => {
-  const filesChanged = await getChangedFiles(octokit, repo, owner);
+  const filesChanged = await getChangedFiles(octokit, repo, owner, pull_request);
 
   filesChanged.forEach((PRFile) => {
     if (PRFile.endsWith('.md') || PRFile.endsWith('.markdown')) {
