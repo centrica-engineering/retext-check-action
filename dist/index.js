@@ -16092,11 +16092,13 @@ const octokit = github.getOctokit(github_token);
         .use((retext_stringify_default()))
         .process(data, (err, file) => {
           const body = `
-          <details>
-          <summary>Review tips to improve ${PRFile}</summary>
-          ${vfile_reporter_default()(err || file)}
-          </details>
-          `
+<details>
+<summary>Review tips to improve ${PRFile}</summary>
+
+${vfile_reporter_default()(err || file)}
+
+</details>
+`
           octokit.issues.createComment({
             owner,
             repo,
