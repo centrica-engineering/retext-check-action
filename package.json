@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "rm -rf dist && npx @vercel/ncc build src/index.js",
+    "build": "rm -rf dist && npx @vercel/ncc build src/index.js && cp node_modules/dictionary-en-gb/index.aff node_modules/dictionary-en-gb/index.dic dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
