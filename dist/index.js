@@ -3587,6 +3587,171 @@ exports.request = request;
 
 /***/ }),
 
+/***/ 3649:
+/***/ ((module) => {
+
+"use strict";
+
+const ansiEscapes = module.exports;
+// TODO: remove this in the next major version
+module.exports.default = ansiEscapes;
+
+const ESC = '\u001B[';
+const OSC = '\u001B]';
+const BEL = '\u0007';
+const SEP = ';';
+const isTerminalApp = process.env.TERM_PROGRAM === 'Apple_Terminal';
+
+ansiEscapes.cursorTo = (x, y) => {
+	if (typeof x !== 'number') {
+		throw new TypeError('The `x` argument is required');
+	}
+
+	if (typeof y !== 'number') {
+		return ESC + (x + 1) + 'G';
+	}
+
+	return ESC + (y + 1) + ';' + (x + 1) + 'H';
+};
+
+ansiEscapes.cursorMove = (x, y) => {
+	if (typeof x !== 'number') {
+		throw new TypeError('The `x` argument is required');
+	}
+
+	let ret = '';
+
+	if (x < 0) {
+		ret += ESC + (-x) + 'D';
+	} else if (x > 0) {
+		ret += ESC + x + 'C';
+	}
+
+	if (y < 0) {
+		ret += ESC + (-y) + 'A';
+	} else if (y > 0) {
+		ret += ESC + y + 'B';
+	}
+
+	return ret;
+};
+
+ansiEscapes.cursorUp = (count = 1) => ESC + count + 'A';
+ansiEscapes.cursorDown = (count = 1) => ESC + count + 'B';
+ansiEscapes.cursorForward = (count = 1) => ESC + count + 'C';
+ansiEscapes.cursorBackward = (count = 1) => ESC + count + 'D';
+
+ansiEscapes.cursorLeft = ESC + 'G';
+ansiEscapes.cursorSavePosition = isTerminalApp ? '\u001B7' : ESC + 's';
+ansiEscapes.cursorRestorePosition = isTerminalApp ? '\u001B8' : ESC + 'u';
+ansiEscapes.cursorGetPosition = ESC + '6n';
+ansiEscapes.cursorNextLine = ESC + 'E';
+ansiEscapes.cursorPrevLine = ESC + 'F';
+ansiEscapes.cursorHide = ESC + '?25l';
+ansiEscapes.cursorShow = ESC + '?25h';
+
+ansiEscapes.eraseLines = count => {
+	let clear = '';
+
+	for (let i = 0; i < count; i++) {
+		clear += ansiEscapes.eraseLine + (i < count - 1 ? ansiEscapes.cursorUp() : '');
+	}
+
+	if (count) {
+		clear += ansiEscapes.cursorLeft;
+	}
+
+	return clear;
+};
+
+ansiEscapes.eraseEndLine = ESC + 'K';
+ansiEscapes.eraseStartLine = ESC + '1K';
+ansiEscapes.eraseLine = ESC + '2K';
+ansiEscapes.eraseDown = ESC + 'J';
+ansiEscapes.eraseUp = ESC + '1J';
+ansiEscapes.eraseScreen = ESC + '2J';
+ansiEscapes.scrollUp = ESC + 'S';
+ansiEscapes.scrollDown = ESC + 'T';
+
+ansiEscapes.clearScreen = '\u001Bc';
+
+ansiEscapes.clearTerminal = process.platform === 'win32' ?
+	`${ansiEscapes.eraseScreen}${ESC}0f` :
+	// 1. Erases the screen (Only done in case `2` is not supported)
+	// 2. Erases the whole screen including scrollback buffer
+	// 3. Moves cursor to the top-left position
+	// More info: https://www.real-world-systems.com/docs/ANSIcode.html
+	`${ansiEscapes.eraseScreen}${ESC}3J${ESC}H`;
+
+ansiEscapes.beep = BEL;
+
+ansiEscapes.link = (text, url) => {
+	return [
+		OSC,
+		'8',
+		SEP,
+		SEP,
+		url,
+		BEL,
+		text,
+		OSC,
+		'8',
+		SEP,
+		SEP,
+		BEL
+	].join('');
+};
+
+ansiEscapes.image = (buffer, options = {}) => {
+	let ret = `${OSC}1337;File=inline=1`;
+
+	if (options.width) {
+		ret += `;width=${options.width}`;
+	}
+
+	if (options.height) {
+		ret += `;height=${options.height}`;
+	}
+
+	if (options.preserveAspectRatio === false) {
+		ret += ';preserveAspectRatio=0';
+	}
+
+	return ret + ':' + buffer.toString('base64') + BEL;
+};
+
+ansiEscapes.iTerm = {
+	setCwd: (cwd = process.cwd()) => `${OSC}50;CurrentDir=${cwd}${BEL}`,
+
+	annotation: (message, options = {}) => {
+		let ret = `${OSC}1337;`;
+
+		const hasX = typeof options.x !== 'undefined';
+		const hasY = typeof options.y !== 'undefined';
+		if ((hasX || hasY) && !(hasX && hasY && typeof options.length !== 'undefined')) {
+			throw new Error('`x`, `y` and `length` must be defined when `x` or `y` is defined');
+		}
+
+		message = message.replace(/\|/g, '');
+
+		ret += options.isHidden ? 'AddHiddenAnnotation=' : 'AddAnnotation=';
+
+		if (options.length > 0) {
+			ret +=
+					(hasX ?
+						[message, options.length, options.x, options.y] :
+						[options.length, message]).join('|');
+		} else {
+			ret += message;
+		}
+
+		return ret + BEL;
+	}
+};
+
+
+/***/ }),
+
 /***/ 732:
 /***/ ((module) => {
 
@@ -3601,6 +3766,178 @@ module.exports = ({onlyFirst = false} = {}) => {
 
 	return new RegExp(pattern, onlyFirst ? undefined : 'g');
 };
+
+
+/***/ }),
+
+/***/ 6690:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/* module decorator */ module = __nccwpck_require__.nmd(module);
+
+
+const wrapAnsi16 = (fn, offset) => (...args) => {
+	const code = fn(...args);
+	return `\u001B[${code + offset}m`;
+};
+
+const wrapAnsi256 = (fn, offset) => (...args) => {
+	const code = fn(...args);
+	return `\u001B[${38 + offset};5;${code}m`;
+};
+
+const wrapAnsi16m = (fn, offset) => (...args) => {
+	const rgb = fn(...args);
+	return `\u001B[${38 + offset};2;${rgb[0]};${rgb[1]};${rgb[2]}m`;
+};
+
+const ansi2ansi = n => n;
+const rgb2rgb = (r, g, b) => [r, g, b];
+
+const setLazyProperty = (object, property, get) => {
+	Object.defineProperty(object, property, {
+		get: () => {
+			const value = get();
+
+			Object.defineProperty(object, property, {
+				value,
+				enumerable: true,
+				configurable: true
+			});
+
+			return value;
+		},
+		enumerable: true,
+		configurable: true
+	});
+};
+
+/** @type {typeof import('color-convert')} */
+let colorConvert;
+const makeDynamicStyles = (wrap, targetSpace, identity, isBackground) => {
+	if (colorConvert === undefined) {
+		colorConvert = __nccwpck_require__(1575);
+	}
+
+	const offset = isBackground ? 10 : 0;
+	const styles = {};
+
+	for (const [sourceSpace, suite] of Object.entries(colorConvert)) {
+		const name = sourceSpace === 'ansi16' ? 'ansi' : sourceSpace;
+		if (sourceSpace === targetSpace) {
+			styles[name] = wrap(identity, offset);
+		} else if (typeof suite === 'object') {
+			styles[name] = wrap(suite[targetSpace], offset);
+		}
+	}
+
+	return styles;
+};
+
+function assembleStyles() {
+	const codes = new Map();
+	const styles = {
+		modifier: {
+			reset: [0, 0],
+			// 21 isn't widely supported and 22 does the same thing
+			bold: [1, 22],
+			dim: [2, 22],
+			italic: [3, 23],
+			underline: [4, 24],
+			inverse: [7, 27],
+			hidden: [8, 28],
+			strikethrough: [9, 29]
+		},
+		color: {
+			black: [30, 39],
+			red: [31, 39],
+			green: [32, 39],
+			yellow: [33, 39],
+			blue: [34, 39],
+			magenta: [35, 39],
+			cyan: [36, 39],
+			white: [37, 39],
+
+			// Bright color
+			blackBright: [90, 39],
+			redBright: [91, 39],
+			greenBright: [92, 39],
+			yellowBright: [93, 39],
+			blueBright: [94, 39],
+			magentaBright: [95, 39],
+			cyanBright: [96, 39],
+			whiteBright: [97, 39]
+		},
+		bgColor: {
+			bgBlack: [40, 49],
+			bgRed: [41, 49],
+			bgGreen: [42, 49],
+			bgYellow: [43, 49],
+			bgBlue: [44, 49],
+			bgMagenta: [45, 49],
+			bgCyan: [46, 49],
+			bgWhite: [47, 49],
+
+			// Bright color
+			bgBlackBright: [100, 49],
+			bgRedBright: [101, 49],
+			bgGreenBright: [102, 49],
+			bgYellowBright: [103, 49],
+			bgBlueBright: [104, 49],
+			bgMagentaBright: [105, 49],
+			bgCyanBright: [106, 49],
+			bgWhiteBright: [107, 49]
+		}
+	};
+
+	// Alias bright black as gray (and grey)
+	styles.color.gray = styles.color.blackBright;
+	styles.bgColor.bgGray = styles.bgColor.bgBlackBright;
+	styles.color.grey = styles.color.blackBright;
+	styles.bgColor.bgGrey = styles.bgColor.bgBlackBright;
+
+	for (const [groupName, group] of Object.entries(styles)) {
+		for (const [styleName, style] of Object.entries(group)) {
+			styles[styleName] = {
+				open: `\u001B[${style[0]}m`,
+				close: `\u001B[${style[1]}m`
+			};
+
+			group[styleName] = styles[styleName];
+
+			codes.set(style[0], style[1]);
+		}
+
+		Object.defineProperty(styles, groupName, {
+			value: group,
+			enumerable: false
+		});
+	}
+
+	Object.defineProperty(styles, 'codes', {
+		value: codes,
+		enumerable: false
+	});
+
+	styles.color.close = '\u001B[39m';
+	styles.bgColor.close = '\u001B[49m';
+
+	setLazyProperty(styles.color, 'ansi', () => makeDynamicStyles(wrapAnsi16, 'ansi16', ansi2ansi, false));
+	setLazyProperty(styles.color, 'ansi256', () => makeDynamicStyles(wrapAnsi256, 'ansi256', ansi2ansi, false));
+	setLazyProperty(styles.color, 'ansi16m', () => makeDynamicStyles(wrapAnsi16m, 'rgb', rgb2rgb, false));
+	setLazyProperty(styles.bgColor, 'ansi', () => makeDynamicStyles(wrapAnsi16, 'ansi16', ansi2ansi, true));
+	setLazyProperty(styles.bgColor, 'ansi256', () => makeDynamicStyles(wrapAnsi256, 'ansi256', ansi2ansi, true));
+	setLazyProperty(styles.bgColor, 'ansi16m', () => makeDynamicStyles(wrapAnsi16m, 'rgb', rgb2rgb, true));
+
+	return styles;
+}
+
+// Make the export immutable
+Object.defineProperty(module, 'exports', {
+	enumerable: true,
+	get: assembleStyles
+});
 
 
 /***/ }),
@@ -3876,6 +4213,591 @@ function removeHook(state, name, method) {
 
 /***/ }),
 
+/***/ 7977:
+/***/ ((module) => {
+
+"use strict";
+
+
+module.exports = (flag, argv = process.argv) => {
+	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+	const position = argv.indexOf(prefix + flag);
+	const terminatorPosition = argv.indexOf('--');
+	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+};
+
+
+/***/ }),
+
+/***/ 4864:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+const os = __nccwpck_require__(2087);
+const tty = __nccwpck_require__(3867);
+const hasFlag = __nccwpck_require__(7977);
+
+const {env} = process;
+
+let forceColor;
+if (hasFlag('no-color') ||
+	hasFlag('no-colors') ||
+	hasFlag('color=false') ||
+	hasFlag('color=never')) {
+	forceColor = 0;
+} else if (hasFlag('color') ||
+	hasFlag('colors') ||
+	hasFlag('color=true') ||
+	hasFlag('color=always')) {
+	forceColor = 1;
+}
+
+if ('FORCE_COLOR' in env) {
+	if (env.FORCE_COLOR === 'true') {
+		forceColor = 1;
+	} else if (env.FORCE_COLOR === 'false') {
+		forceColor = 0;
+	} else {
+		forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
+	}
+}
+
+function translateLevel(level) {
+	if (level === 0) {
+		return false;
+	}
+
+	return {
+		level,
+		hasBasic: true,
+		has256: level >= 2,
+		has16m: level >= 3
+	};
+}
+
+function supportsColor(haveStream, streamIsTTY) {
+	if (forceColor === 0) {
+		return 0;
+	}
+
+	if (hasFlag('color=16m') ||
+		hasFlag('color=full') ||
+		hasFlag('color=truecolor')) {
+		return 3;
+	}
+
+	if (hasFlag('color=256')) {
+		return 2;
+	}
+
+	if (haveStream && !streamIsTTY && forceColor === undefined) {
+		return 0;
+	}
+
+	const min = forceColor || 0;
+
+	if (env.TERM === 'dumb') {
+		return min;
+	}
+
+	if (process.platform === 'win32') {
+		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+		const osRelease = os.release().split('.');
+		if (
+			Number(osRelease[0]) >= 10 &&
+			Number(osRelease[2]) >= 10586
+		) {
+			return Number(osRelease[2]) >= 14931 ? 3 : 2;
+		}
+
+		return 1;
+	}
+
+	if ('CI' in env) {
+		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'GITHUB_ACTIONS', 'BUILDKITE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
+			return 1;
+		}
+
+		return min;
+	}
+
+	if ('TEAMCITY_VERSION' in env) {
+		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+	}
+
+	if (env.COLORTERM === 'truecolor') {
+		return 3;
+	}
+
+	if ('TERM_PROGRAM' in env) {
+		const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+
+		switch (env.TERM_PROGRAM) {
+			case 'iTerm.app':
+				return version >= 3 ? 3 : 2;
+			case 'Apple_Terminal':
+				return 2;
+			// No default
+		}
+	}
+
+	if (/-256(color)?$/i.test(env.TERM)) {
+		return 2;
+	}
+
+	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
+		return 1;
+	}
+
+	if ('COLORTERM' in env) {
+		return 1;
+	}
+
+	return min;
+}
+
+function getSupportLevel(stream) {
+	const level = supportsColor(stream, stream && stream.isTTY);
+	return translateLevel(level);
+}
+
+module.exports = {
+	supportsColor: getSupportLevel,
+	stdout: translateLevel(supportsColor(true, tty.isatty(1))),
+	stderr: translateLevel(supportsColor(true, tty.isatty(2)))
+};
+
+
+/***/ }),
+
+/***/ 991:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+const ansiStyles = __nccwpck_require__(6690);
+const {stdout: stdoutColor, stderr: stderrColor} = __nccwpck_require__(4864);
+const {
+	stringReplaceAll,
+	stringEncaseCRLFWithFirstIndex
+} = __nccwpck_require__(2163);
+
+const {isArray} = Array;
+
+// `supportsColor.level` → `ansiStyles.color[name]` mapping
+const levelMapping = [
+	'ansi',
+	'ansi',
+	'ansi256',
+	'ansi16m'
+];
+
+const styles = Object.create(null);
+
+const applyOptions = (object, options = {}) => {
+	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
+		throw new Error('The `level` option should be an integer from 0 to 3');
+	}
+
+	// Detect level if not set manually
+	const colorLevel = stdoutColor ? stdoutColor.level : 0;
+	object.level = options.level === undefined ? colorLevel : options.level;
+};
+
+class ChalkClass {
+	constructor(options) {
+		// eslint-disable-next-line no-constructor-return
+		return chalkFactory(options);
+	}
+}
+
+const chalkFactory = options => {
+	const chalk = {};
+	applyOptions(chalk, options);
+
+	chalk.template = (...arguments_) => chalkTag(chalk.template, ...arguments_);
+
+	Object.setPrototypeOf(chalk, Chalk.prototype);
+	Object.setPrototypeOf(chalk.template, chalk);
+
+	chalk.template.constructor = () => {
+		throw new Error('`chalk.constructor()` is deprecated. Use `new chalk.Instance()` instead.');
+	};
+
+	chalk.template.Instance = ChalkClass;
+
+	return chalk.template;
+};
+
+function Chalk(options) {
+	return chalkFactory(options);
+}
+
+for (const [styleName, style] of Object.entries(ansiStyles)) {
+	styles[styleName] = {
+		get() {
+			const builder = createBuilder(this, createStyler(style.open, style.close, this._styler), this._isEmpty);
+			Object.defineProperty(this, styleName, {value: builder});
+			return builder;
+		}
+	};
+}
+
+styles.visible = {
+	get() {
+		const builder = createBuilder(this, this._styler, true);
+		Object.defineProperty(this, 'visible', {value: builder});
+		return builder;
+	}
+};
+
+const usedModels = ['rgb', 'hex', 'keyword', 'hsl', 'hsv', 'hwb', 'ansi', 'ansi256'];
+
+for (const model of usedModels) {
+	styles[model] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler(ansiStyles.color[levelMapping[level]][model](...arguments_), ansiStyles.color.close, this._styler);
+				return createBuilder(this, styler, this._isEmpty);
+			};
+		}
+	};
+}
+
+for (const model of usedModels) {
+	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
+	styles[bgModel] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler(ansiStyles.bgColor[levelMapping[level]][model](...arguments_), ansiStyles.bgColor.close, this._styler);
+				return createBuilder(this, styler, this._isEmpty);
+			};
+		}
+	};
+}
+
+const proto = Object.defineProperties(() => {}, {
+	...styles,
+	level: {
+		enumerable: true,
+		get() {
+			return this._generator.level;
+		},
+		set(level) {
+			this._generator.level = level;
+		}
+	}
+});
+
+const createStyler = (open, close, parent) => {
+	let openAll;
+	let closeAll;
+	if (parent === undefined) {
+		openAll = open;
+		closeAll = close;
+	} else {
+		openAll = parent.openAll + open;
+		closeAll = close + parent.closeAll;
+	}
+
+	return {
+		open,
+		close,
+		openAll,
+		closeAll,
+		parent
+	};
+};
+
+const createBuilder = (self, _styler, _isEmpty) => {
+	const builder = (...arguments_) => {
+		if (isArray(arguments_[0]) && isArray(arguments_[0].raw)) {
+			// Called as a template literal, for example: chalk.red`2 + 3 = {bold ${2+3}}`
+			return applyStyle(builder, chalkTag(builder, ...arguments_));
+		}
+
+		// Single argument is hot path, implicit coercion is faster than anything
+		// eslint-disable-next-line no-implicit-coercion
+		return applyStyle(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
+	};
+
+	// We alter the prototype because we must return a function, but there is
+	// no way to create a function with a different prototype
+	Object.setPrototypeOf(builder, proto);
+
+	builder._generator = self;
+	builder._styler = _styler;
+	builder._isEmpty = _isEmpty;
+
+	return builder;
+};
+
+const applyStyle = (self, string) => {
+	if (self.level <= 0 || !string) {
+		return self._isEmpty ? '' : string;
+	}
+
+	let styler = self._styler;
+
+	if (styler === undefined) {
+		return string;
+	}
+
+	const {openAll, closeAll} = styler;
+	if (string.indexOf('\u001B') !== -1) {
+		while (styler !== undefined) {
+			// Replace any instances already present with a re-opening code
+			// otherwise only the part of the string until said closing code
+			// will be colored, and the rest will simply be 'plain'.
+			string = stringReplaceAll(string, styler.close, styler.open);
+
+			styler = styler.parent;
+		}
+	}
+
+	// We can move both next actions out of loop, because remaining actions in loop won't have
+	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
+	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
+	const lfIndex = string.indexOf('\n');
+	if (lfIndex !== -1) {
+		string = stringEncaseCRLFWithFirstIndex(string, closeAll, openAll, lfIndex);
+	}
+
+	return openAll + string + closeAll;
+};
+
+let template;
+const chalkTag = (chalk, ...strings) => {
+	const [firstString] = strings;
+
+	if (!isArray(firstString) || !isArray(firstString.raw)) {
+		// If chalk() was called by itself or with a string,
+		// return the string itself as a string.
+		return strings.join(' ');
+	}
+
+	const arguments_ = strings.slice(1);
+	const parts = [firstString.raw[0]];
+
+	for (let i = 1; i < firstString.length; i++) {
+		parts.push(
+			String(arguments_[i - 1]).replace(/[{}\\]/g, '\\$&'),
+			String(firstString.raw[i])
+		);
+	}
+
+	if (template === undefined) {
+		template = __nccwpck_require__(6053);
+	}
+
+	return template(chalk, parts.join(''));
+};
+
+Object.defineProperties(Chalk.prototype, styles);
+
+const chalk = Chalk(); // eslint-disable-line new-cap
+chalk.supportsColor = stdoutColor;
+chalk.stderr = Chalk({level: stderrColor ? stderrColor.level : 0}); // eslint-disable-line new-cap
+chalk.stderr.supportsColor = stderrColor;
+
+module.exports = chalk;
+
+
+/***/ }),
+
+/***/ 6053:
+/***/ ((module) => {
+
+"use strict";
+
+const TEMPLATE_REGEX = /(?:\\(u(?:[a-f\d]{4}|\{[a-f\d]{1,6}\})|x[a-f\d]{2}|.))|(?:\{(~)?(\w+(?:\([^)]*\))?(?:\.\w+(?:\([^)]*\))?)*)(?:[ \t]|(?=\r?\n)))|(\})|((?:.|[\r\n\f])+?)/gi;
+const STYLE_REGEX = /(?:^|\.)(\w+)(?:\(([^)]*)\))?/g;
+const STRING_REGEX = /^(['"])((?:\\.|(?!\1)[^\\])*)\1$/;
+const ESCAPE_REGEX = /\\(u(?:[a-f\d]{4}|{[a-f\d]{1,6}})|x[a-f\d]{2}|.)|([^\\])/gi;
+
+const ESCAPES = new Map([
+	['n', '\n'],
+	['r', '\r'],
+	['t', '\t'],
+	['b', '\b'],
+	['f', '\f'],
+	['v', '\v'],
+	['0', '\0'],
+	['\\', '\\'],
+	['e', '\u001B'],
+	['a', '\u0007']
+]);
+
+function unescape(c) {
+	const u = c[0] === 'u';
+	const bracket = c[1] === '{';
+
+	if ((u && !bracket && c.length === 5) || (c[0] === 'x' && c.length === 3)) {
+		return String.fromCharCode(parseInt(c.slice(1), 16));
+	}
+
+	if (u && bracket) {
+		return String.fromCodePoint(parseInt(c.slice(2, -1), 16));
+	}
+
+	return ESCAPES.get(c) || c;
+}
+
+function parseArguments(name, arguments_) {
+	const results = [];
+	const chunks = arguments_.trim().split(/\s*,\s*/g);
+	let matches;
+
+	for (const chunk of chunks) {
+		const number = Number(chunk);
+		if (!Number.isNaN(number)) {
+			results.push(number);
+		} else if ((matches = chunk.match(STRING_REGEX))) {
+			results.push(matches[2].replace(ESCAPE_REGEX, (m, escape, character) => escape ? unescape(escape) : character));
+		} else {
+			throw new Error(`Invalid Chalk template style argument: ${chunk} (in style '${name}')`);
+		}
+	}
+
+	return results;
+}
+
+function parseStyle(style) {
+	STYLE_REGEX.lastIndex = 0;
+
+	const results = [];
+	let matches;
+
+	while ((matches = STYLE_REGEX.exec(style)) !== null) {
+		const name = matches[1];
+
+		if (matches[2]) {
+			const args = parseArguments(name, matches[2]);
+			results.push([name].concat(args));
+		} else {
+			results.push([name]);
+		}
+	}
+
+	return results;
+}
+
+function buildStyle(chalk, styles) {
+	const enabled = {};
+
+	for (const layer of styles) {
+		for (const style of layer.styles) {
+			enabled[style[0]] = layer.inverse ? null : style.slice(1);
+		}
+	}
+
+	let current = chalk;
+	for (const [styleName, styles] of Object.entries(enabled)) {
+		if (!Array.isArray(styles)) {
+			continue;
+		}
+
+		if (!(styleName in current)) {
+			throw new Error(`Unknown Chalk style: ${styleName}`);
+		}
+
+		current = styles.length > 0 ? current[styleName](...styles) : current[styleName];
+	}
+
+	return current;
+}
+
+module.exports = (chalk, temporary) => {
+	const styles = [];
+	const chunks = [];
+	let chunk = [];
+
+	// eslint-disable-next-line max-params
+	temporary.replace(TEMPLATE_REGEX, (m, escapeCharacter, inverse, style, close, character) => {
+		if (escapeCharacter) {
+			chunk.push(unescape(escapeCharacter));
+		} else if (style) {
+			const string = chunk.join('');
+			chunk = [];
+			chunks.push(styles.length === 0 ? string : buildStyle(chalk, styles)(string));
+			styles.push({inverse, styles: parseStyle(style)});
+		} else if (close) {
+			if (styles.length === 0) {
+				throw new Error('Found extraneous } in Chalk template literal');
+			}
+
+			chunks.push(buildStyle(chalk, styles)(chunk.join('')));
+			chunk = [];
+			styles.pop();
+		} else {
+			chunk.push(character);
+		}
+	});
+
+	chunks.push(chunk.join(''));
+
+	if (styles.length > 0) {
+		const errMessage = `Chalk template literal is missing ${styles.length} closing bracket${styles.length === 1 ? '' : 's'} (\`}\`)`;
+		throw new Error(errMessage);
+	}
+
+	return chunks.join('');
+};
+
+
+/***/ }),
+
+/***/ 2163:
+/***/ ((module) => {
+
+"use strict";
+
+
+const stringReplaceAll = (string, substring, replacer) => {
+	let index = string.indexOf(substring);
+	if (index === -1) {
+		return string;
+	}
+
+	const substringLength = substring.length;
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		returnValue += string.substr(endIndex, index - endIndex) + substring + replacer;
+		endIndex = index + substringLength;
+		index = string.indexOf(substring, endIndex);
+	} while (index !== -1);
+
+	returnValue += string.substr(endIndex);
+	return returnValue;
+};
+
+const stringEncaseCRLFWithFirstIndex = (string, prefix, postfix, index) => {
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		const gotCR = string[index - 1] === '\r';
+		returnValue += string.substr(endIndex, (gotCR ? index - 1 : index) - endIndex) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
+		endIndex = index + 1;
+		index = string.indexOf('\n', endIndex);
+	} while (index !== -1);
+
+	returnValue += string.substr(endIndex);
+	return returnValue;
+};
+
+module.exports = {
+	stringReplaceAll,
+	stringEncaseCRLFWithFirstIndex
+};
+
+
+/***/ }),
+
 /***/ 7592:
 /***/ ((module) => {
 
@@ -3900,6 +4822,1204 @@ function colemanLiau(counts) {
     base
   )
 }
+
+
+/***/ }),
+
+/***/ 9692:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/* MIT license */
+/* eslint-disable no-mixed-operators */
+const cssKeywords = __nccwpck_require__(1546);
+
+// NOTE: conversions should only return primitive values (i.e. arrays, or
+//       values that give correct `typeof` results).
+//       do not use box values types (i.e. Number(), String(), etc.)
+
+const reverseKeywords = {};
+for (const key of Object.keys(cssKeywords)) {
+	reverseKeywords[cssKeywords[key]] = key;
+}
+
+const convert = {
+	rgb: {channels: 3, labels: 'rgb'},
+	hsl: {channels: 3, labels: 'hsl'},
+	hsv: {channels: 3, labels: 'hsv'},
+	hwb: {channels: 3, labels: 'hwb'},
+	cmyk: {channels: 4, labels: 'cmyk'},
+	xyz: {channels: 3, labels: 'xyz'},
+	lab: {channels: 3, labels: 'lab'},
+	lch: {channels: 3, labels: 'lch'},
+	hex: {channels: 1, labels: ['hex']},
+	keyword: {channels: 1, labels: ['keyword']},
+	ansi16: {channels: 1, labels: ['ansi16']},
+	ansi256: {channels: 1, labels: ['ansi256']},
+	hcg: {channels: 3, labels: ['h', 'c', 'g']},
+	apple: {channels: 3, labels: ['r16', 'g16', 'b16']},
+	gray: {channels: 1, labels: ['gray']}
+};
+
+module.exports = convert;
+
+// Hide .channels and .labels properties
+for (const model of Object.keys(convert)) {
+	if (!('channels' in convert[model])) {
+		throw new Error('missing channels property: ' + model);
+	}
+
+	if (!('labels' in convert[model])) {
+		throw new Error('missing channel labels property: ' + model);
+	}
+
+	if (convert[model].labels.length !== convert[model].channels) {
+		throw new Error('channel and label counts mismatch: ' + model);
+	}
+
+	const {channels, labels} = convert[model];
+	delete convert[model].channels;
+	delete convert[model].labels;
+	Object.defineProperty(convert[model], 'channels', {value: channels});
+	Object.defineProperty(convert[model], 'labels', {value: labels});
+}
+
+convert.rgb.hsl = function (rgb) {
+	const r = rgb[0] / 255;
+	const g = rgb[1] / 255;
+	const b = rgb[2] / 255;
+	const min = Math.min(r, g, b);
+	const max = Math.max(r, g, b);
+	const delta = max - min;
+	let h;
+	let s;
+
+	if (max === min) {
+		h = 0;
+	} else if (r === max) {
+		h = (g - b) / delta;
+	} else if (g === max) {
+		h = 2 + (b - r) / delta;
+	} else if (b === max) {
+		h = 4 + (r - g) / delta;
+	}
+
+	h = Math.min(h * 60, 360);
+
+	if (h < 0) {
+		h += 360;
+	}
+
+	const l = (min + max) / 2;
+
+	if (max === min) {
+		s = 0;
+	} else if (l <= 0.5) {
+		s = delta / (max + min);
+	} else {
+		s = delta / (2 - max - min);
+	}
+
+	return [h, s * 100, l * 100];
+};
+
+convert.rgb.hsv = function (rgb) {
+	let rdif;
+	let gdif;
+	let bdif;
+	let h;
+	let s;
+
+	const r = rgb[0] / 255;
+	const g = rgb[1] / 255;
+	const b = rgb[2] / 255;
+	const v = Math.max(r, g, b);
+	const diff = v - Math.min(r, g, b);
+	const diffc = function (c) {
+		return (v - c) / 6 / diff + 1 / 2;
+	};
+
+	if (diff === 0) {
+		h = 0;
+		s = 0;
+	} else {
+		s = diff / v;
+		rdif = diffc(r);
+		gdif = diffc(g);
+		bdif = diffc(b);
+
+		if (r === v) {
+			h = bdif - gdif;
+		} else if (g === v) {
+			h = (1 / 3) + rdif - bdif;
+		} else if (b === v) {
+			h = (2 / 3) + gdif - rdif;
+		}
+
+		if (h < 0) {
+			h += 1;
+		} else if (h > 1) {
+			h -= 1;
+		}
+	}
+
+	return [
+		h * 360,
+		s * 100,
+		v * 100
+	];
+};
+
+convert.rgb.hwb = function (rgb) {
+	const r = rgb[0];
+	const g = rgb[1];
+	let b = rgb[2];
+	const h = convert.rgb.hsl(rgb)[0];
+	const w = 1 / 255 * Math.min(r, Math.min(g, b));
+
+	b = 1 - 1 / 255 * Math.max(r, Math.max(g, b));
+
+	return [h, w * 100, b * 100];
+};
+
+convert.rgb.cmyk = function (rgb) {
+	const r = rgb[0] / 255;
+	const g = rgb[1] / 255;
+	const b = rgb[2] / 255;
+
+	const k = Math.min(1 - r, 1 - g, 1 - b);
+	const c = (1 - r - k) / (1 - k) || 0;
+	const m = (1 - g - k) / (1 - k) || 0;
+	const y = (1 - b - k) / (1 - k) || 0;
+
+	return [c * 100, m * 100, y * 100, k * 100];
+};
+
+function comparativeDistance(x, y) {
+	/*
+		See https://en.m.wikipedia.org/wiki/Euclidean_distance#Squared_Euclidean_distance
+	*/
+	return (
+		((x[0] - y[0]) ** 2) +
+		((x[1] - y[1]) ** 2) +
+		((x[2] - y[2]) ** 2)
+	);
+}
+
+convert.rgb.keyword = function (rgb) {
+	const reversed = reverseKeywords[rgb];
+	if (reversed) {
+		return reversed;
+	}
+
+	let currentClosestDistance = Infinity;
+	let currentClosestKeyword;
+
+	for (const keyword of Object.keys(cssKeywords)) {
+		const value = cssKeywords[keyword];
+
+		// Compute comparative distance
+		const distance = comparativeDistance(rgb, value);
+
+		// Check if its less, if so set as closest
+		if (distance < currentClosestDistance) {
+			currentClosestDistance = distance;
+			currentClosestKeyword = keyword;
+		}
+	}
+
+	return currentClosestKeyword;
+};
+
+convert.keyword.rgb = function (keyword) {
+	return cssKeywords[keyword];
+};
+
+convert.rgb.xyz = function (rgb) {
+	let r = rgb[0] / 255;
+	let g = rgb[1] / 255;
+	let b = rgb[2] / 255;
+
+	// Assume sRGB
+	r = r > 0.04045 ? (((r + 0.055) / 1.055) ** 2.4) : (r / 12.92);
+	g = g > 0.04045 ? (((g + 0.055) / 1.055) ** 2.4) : (g / 12.92);
+	b = b > 0.04045 ? (((b + 0.055) / 1.055) ** 2.4) : (b / 12.92);
+
+	const x = (r * 0.4124) + (g * 0.3576) + (b * 0.1805);
+	const y = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
+	const z = (r * 0.0193) + (g * 0.1192) + (b * 0.9505);
+
+	return [x * 100, y * 100, z * 100];
+};
+
+convert.rgb.lab = function (rgb) {
+	const xyz = convert.rgb.xyz(rgb);
+	let x = xyz[0];
+	let y = xyz[1];
+	let z = xyz[2];
+
+	x /= 95.047;
+	y /= 100;
+	z /= 108.883;
+
+	x = x > 0.008856 ? (x ** (1 / 3)) : (7.787 * x) + (16 / 116);
+	y = y > 0.008856 ? (y ** (1 / 3)) : (7.787 * y) + (16 / 116);
+	z = z > 0.008856 ? (z ** (1 / 3)) : (7.787 * z) + (16 / 116);
+
+	const l = (116 * y) - 16;
+	const a = 500 * (x - y);
+	const b = 200 * (y - z);
+
+	return [l, a, b];
+};
+
+convert.hsl.rgb = function (hsl) {
+	const h = hsl[0] / 360;
+	const s = hsl[1] / 100;
+	const l = hsl[2] / 100;
+	let t2;
+	let t3;
+	let val;
+
+	if (s === 0) {
+		val = l * 255;
+		return [val, val, val];
+	}
+
+	if (l < 0.5) {
+		t2 = l * (1 + s);
+	} else {
+		t2 = l + s - l * s;
+	}
+
+	const t1 = 2 * l - t2;
+
+	const rgb = [0, 0, 0];
+	for (let i = 0; i < 3; i++) {
+		t3 = h + 1 / 3 * -(i - 1);
+		if (t3 < 0) {
+			t3++;
+		}
+
+		if (t3 > 1) {
+			t3--;
+		}
+
+		if (6 * t3 < 1) {
+			val = t1 + (t2 - t1) * 6 * t3;
+		} else if (2 * t3 < 1) {
+			val = t2;
+		} else if (3 * t3 < 2) {
+			val = t1 + (t2 - t1) * (2 / 3 - t3) * 6;
+		} else {
+			val = t1;
+		}
+
+		rgb[i] = val * 255;
+	}
+
+	return rgb;
+};
+
+convert.hsl.hsv = function (hsl) {
+	const h = hsl[0];
+	let s = hsl[1] / 100;
+	let l = hsl[2] / 100;
+	let smin = s;
+	const lmin = Math.max(l, 0.01);
+
+	l *= 2;
+	s *= (l <= 1) ? l : 2 - l;
+	smin *= lmin <= 1 ? lmin : 2 - lmin;
+	const v = (l + s) / 2;
+	const sv = l === 0 ? (2 * smin) / (lmin + smin) : (2 * s) / (l + s);
+
+	return [h, sv * 100, v * 100];
+};
+
+convert.hsv.rgb = function (hsv) {
+	const h = hsv[0] / 60;
+	const s = hsv[1] / 100;
+	let v = hsv[2] / 100;
+	const hi = Math.floor(h) % 6;
+
+	const f = h - Math.floor(h);
+	const p = 255 * v * (1 - s);
+	const q = 255 * v * (1 - (s * f));
+	const t = 255 * v * (1 - (s * (1 - f)));
+	v *= 255;
+
+	switch (hi) {
+		case 0:
+			return [v, t, p];
+		case 1:
+			return [q, v, p];
+		case 2:
+			return [p, v, t];
+		case 3:
+			return [p, q, v];
+		case 4:
+			return [t, p, v];
+		case 5:
+			return [v, p, q];
+	}
+};
+
+convert.hsv.hsl = function (hsv) {
+	const h = hsv[0];
+	const s = hsv[1] / 100;
+	const v = hsv[2] / 100;
+	const vmin = Math.max(v, 0.01);
+	let sl;
+	let l;
+
+	l = (2 - s) * v;
+	const lmin = (2 - s) * vmin;
+	sl = s * vmin;
+	sl /= (lmin <= 1) ? lmin : 2 - lmin;
+	sl = sl || 0;
+	l /= 2;
+
+	return [h, sl * 100, l * 100];
+};
+
+// http://dev.w3.org/csswg/css-color/#hwb-to-rgb
+convert.hwb.rgb = function (hwb) {
+	const h = hwb[0] / 360;
+	let wh = hwb[1] / 100;
+	let bl = hwb[2] / 100;
+	const ratio = wh + bl;
+	let f;
+
+	// Wh + bl cant be > 1
+	if (ratio > 1) {
+		wh /= ratio;
+		bl /= ratio;
+	}
+
+	const i = Math.floor(6 * h);
+	const v = 1 - bl;
+	f = 6 * h - i;
+
+	if ((i & 0x01) !== 0) {
+		f = 1 - f;
+	}
+
+	const n = wh + f * (v - wh); // Linear interpolation
+
+	let r;
+	let g;
+	let b;
+	/* eslint-disable max-statements-per-line,no-multi-spaces */
+	switch (i) {
+		default:
+		case 6:
+		case 0: r = v;  g = n;  b = wh; break;
+		case 1: r = n;  g = v;  b = wh; break;
+		case 2: r = wh; g = v;  b = n; break;
+		case 3: r = wh; g = n;  b = v; break;
+		case 4: r = n;  g = wh; b = v; break;
+		case 5: r = v;  g = wh; b = n; break;
+	}
+	/* eslint-enable max-statements-per-line,no-multi-spaces */
+
+	return [r * 255, g * 255, b * 255];
+};
+
+convert.cmyk.rgb = function (cmyk) {
+	const c = cmyk[0] / 100;
+	const m = cmyk[1] / 100;
+	const y = cmyk[2] / 100;
+	const k = cmyk[3] / 100;
+
+	const r = 1 - Math.min(1, c * (1 - k) + k);
+	const g = 1 - Math.min(1, m * (1 - k) + k);
+	const b = 1 - Math.min(1, y * (1 - k) + k);
+
+	return [r * 255, g * 255, b * 255];
+};
+
+convert.xyz.rgb = function (xyz) {
+	const x = xyz[0] / 100;
+	const y = xyz[1] / 100;
+	const z = xyz[2] / 100;
+	let r;
+	let g;
+	let b;
+
+	r = (x * 3.2406) + (y * -1.5372) + (z * -0.4986);
+	g = (x * -0.9689) + (y * 1.8758) + (z * 0.0415);
+	b = (x * 0.0557) + (y * -0.2040) + (z * 1.0570);
+
+	// Assume sRGB
+	r = r > 0.0031308
+		? ((1.055 * (r ** (1.0 / 2.4))) - 0.055)
+		: r * 12.92;
+
+	g = g > 0.0031308
+		? ((1.055 * (g ** (1.0 / 2.4))) - 0.055)
+		: g * 12.92;
+
+	b = b > 0.0031308
+		? ((1.055 * (b ** (1.0 / 2.4))) - 0.055)
+		: b * 12.92;
+
+	r = Math.min(Math.max(0, r), 1);
+	g = Math.min(Math.max(0, g), 1);
+	b = Math.min(Math.max(0, b), 1);
+
+	return [r * 255, g * 255, b * 255];
+};
+
+convert.xyz.lab = function (xyz) {
+	let x = xyz[0];
+	let y = xyz[1];
+	let z = xyz[2];
+
+	x /= 95.047;
+	y /= 100;
+	z /= 108.883;
+
+	x = x > 0.008856 ? (x ** (1 / 3)) : (7.787 * x) + (16 / 116);
+	y = y > 0.008856 ? (y ** (1 / 3)) : (7.787 * y) + (16 / 116);
+	z = z > 0.008856 ? (z ** (1 / 3)) : (7.787 * z) + (16 / 116);
+
+	const l = (116 * y) - 16;
+	const a = 500 * (x - y);
+	const b = 200 * (y - z);
+
+	return [l, a, b];
+};
+
+convert.lab.xyz = function (lab) {
+	const l = lab[0];
+	const a = lab[1];
+	const b = lab[2];
+	let x;
+	let y;
+	let z;
+
+	y = (l + 16) / 116;
+	x = a / 500 + y;
+	z = y - b / 200;
+
+	const y2 = y ** 3;
+	const x2 = x ** 3;
+	const z2 = z ** 3;
+	y = y2 > 0.008856 ? y2 : (y - 16 / 116) / 7.787;
+	x = x2 > 0.008856 ? x2 : (x - 16 / 116) / 7.787;
+	z = z2 > 0.008856 ? z2 : (z - 16 / 116) / 7.787;
+
+	x *= 95.047;
+	y *= 100;
+	z *= 108.883;
+
+	return [x, y, z];
+};
+
+convert.lab.lch = function (lab) {
+	const l = lab[0];
+	const a = lab[1];
+	const b = lab[2];
+	let h;
+
+	const hr = Math.atan2(b, a);
+	h = hr * 360 / 2 / Math.PI;
+
+	if (h < 0) {
+		h += 360;
+	}
+
+	const c = Math.sqrt(a * a + b * b);
+
+	return [l, c, h];
+};
+
+convert.lch.lab = function (lch) {
+	const l = lch[0];
+	const c = lch[1];
+	const h = lch[2];
+
+	const hr = h / 360 * 2 * Math.PI;
+	const a = c * Math.cos(hr);
+	const b = c * Math.sin(hr);
+
+	return [l, a, b];
+};
+
+convert.rgb.ansi16 = function (args, saturation = null) {
+	const [r, g, b] = args;
+	let value = saturation === null ? convert.rgb.hsv(args)[2] : saturation; // Hsv -> ansi16 optimization
+
+	value = Math.round(value / 50);
+
+	if (value === 0) {
+		return 30;
+	}
+
+	let ansi = 30
+		+ ((Math.round(b / 255) << 2)
+		| (Math.round(g / 255) << 1)
+		| Math.round(r / 255));
+
+	if (value === 2) {
+		ansi += 60;
+	}
+
+	return ansi;
+};
+
+convert.hsv.ansi16 = function (args) {
+	// Optimization here; we already know the value and don't need to get
+	// it converted for us.
+	return convert.rgb.ansi16(convert.hsv.rgb(args), args[2]);
+};
+
+convert.rgb.ansi256 = function (args) {
+	const r = args[0];
+	const g = args[1];
+	const b = args[2];
+
+	// We use the extended greyscale palette here, with the exception of
+	// black and white. normal palette only has 4 greyscale shades.
+	if (r === g && g === b) {
+		if (r < 8) {
+			return 16;
+		}
+
+		if (r > 248) {
+			return 231;
+		}
+
+		return Math.round(((r - 8) / 247) * 24) + 232;
+	}
+
+	const ansi = 16
+		+ (36 * Math.round(r / 255 * 5))
+		+ (6 * Math.round(g / 255 * 5))
+		+ Math.round(b / 255 * 5);
+
+	return ansi;
+};
+
+convert.ansi16.rgb = function (args) {
+	let color = args % 10;
+
+	// Handle greyscale
+	if (color === 0 || color === 7) {
+		if (args > 50) {
+			color += 3.5;
+		}
+
+		color = color / 10.5 * 255;
+
+		return [color, color, color];
+	}
+
+	const mult = (~~(args > 50) + 1) * 0.5;
+	const r = ((color & 1) * mult) * 255;
+	const g = (((color >> 1) & 1) * mult) * 255;
+	const b = (((color >> 2) & 1) * mult) * 255;
+
+	return [r, g, b];
+};
+
+convert.ansi256.rgb = function (args) {
+	// Handle greyscale
+	if (args >= 232) {
+		const c = (args - 232) * 10 + 8;
+		return [c, c, c];
+	}
+
+	args -= 16;
+
+	let rem;
+	const r = Math.floor(args / 36) / 5 * 255;
+	const g = Math.floor((rem = args % 36) / 6) / 5 * 255;
+	const b = (rem % 6) / 5 * 255;
+
+	return [r, g, b];
+};
+
+convert.rgb.hex = function (args) {
+	const integer = ((Math.round(args[0]) & 0xFF) << 16)
+		+ ((Math.round(args[1]) & 0xFF) << 8)
+		+ (Math.round(args[2]) & 0xFF);
+
+	const string = integer.toString(16).toUpperCase();
+	return '000000'.substring(string.length) + string;
+};
+
+convert.hex.rgb = function (args) {
+	const match = args.toString(16).match(/[a-f0-9]{6}|[a-f0-9]{3}/i);
+	if (!match) {
+		return [0, 0, 0];
+	}
+
+	let colorString = match[0];
+
+	if (match[0].length === 3) {
+		colorString = colorString.split('').map(char => {
+			return char + char;
+		}).join('');
+	}
+
+	const integer = parseInt(colorString, 16);
+	const r = (integer >> 16) & 0xFF;
+	const g = (integer >> 8) & 0xFF;
+	const b = integer & 0xFF;
+
+	return [r, g, b];
+};
+
+convert.rgb.hcg = function (rgb) {
+	const r = rgb[0] / 255;
+	const g = rgb[1] / 255;
+	const b = rgb[2] / 255;
+	const max = Math.max(Math.max(r, g), b);
+	const min = Math.min(Math.min(r, g), b);
+	const chroma = (max - min);
+	let grayscale;
+	let hue;
+
+	if (chroma < 1) {
+		grayscale = min / (1 - chroma);
+	} else {
+		grayscale = 0;
+	}
+
+	if (chroma <= 0) {
+		hue = 0;
+	} else
+	if (max === r) {
+		hue = ((g - b) / chroma) % 6;
+	} else
+	if (max === g) {
+		hue = 2 + (b - r) / chroma;
+	} else {
+		hue = 4 + (r - g) / chroma;
+	}
+
+	hue /= 6;
+	hue %= 1;
+
+	return [hue * 360, chroma * 100, grayscale * 100];
+};
+
+convert.hsl.hcg = function (hsl) {
+	const s = hsl[1] / 100;
+	const l = hsl[2] / 100;
+
+	const c = l < 0.5 ? (2.0 * s * l) : (2.0 * s * (1.0 - l));
+
+	let f = 0;
+	if (c < 1.0) {
+		f = (l - 0.5 * c) / (1.0 - c);
+	}
+
+	return [hsl[0], c * 100, f * 100];
+};
+
+convert.hsv.hcg = function (hsv) {
+	const s = hsv[1] / 100;
+	const v = hsv[2] / 100;
+
+	const c = s * v;
+	let f = 0;
+
+	if (c < 1.0) {
+		f = (v - c) / (1 - c);
+	}
+
+	return [hsv[0], c * 100, f * 100];
+};
+
+convert.hcg.rgb = function (hcg) {
+	const h = hcg[0] / 360;
+	const c = hcg[1] / 100;
+	const g = hcg[2] / 100;
+
+	if (c === 0.0) {
+		return [g * 255, g * 255, g * 255];
+	}
+
+	const pure = [0, 0, 0];
+	const hi = (h % 1) * 6;
+	const v = hi % 1;
+	const w = 1 - v;
+	let mg = 0;
+
+	/* eslint-disable max-statements-per-line */
+	switch (Math.floor(hi)) {
+		case 0:
+			pure[0] = 1; pure[1] = v; pure[2] = 0; break;
+		case 1:
+			pure[0] = w; pure[1] = 1; pure[2] = 0; break;
+		case 2:
+			pure[0] = 0; pure[1] = 1; pure[2] = v; break;
+		case 3:
+			pure[0] = 0; pure[1] = w; pure[2] = 1; break;
+		case 4:
+			pure[0] = v; pure[1] = 0; pure[2] = 1; break;
+		default:
+			pure[0] = 1; pure[1] = 0; pure[2] = w;
+	}
+	/* eslint-enable max-statements-per-line */
+
+	mg = (1.0 - c) * g;
+
+	return [
+		(c * pure[0] + mg) * 255,
+		(c * pure[1] + mg) * 255,
+		(c * pure[2] + mg) * 255
+	];
+};
+
+convert.hcg.hsv = function (hcg) {
+	const c = hcg[1] / 100;
+	const g = hcg[2] / 100;
+
+	const v = c + g * (1.0 - c);
+	let f = 0;
+
+	if (v > 0.0) {
+		f = c / v;
+	}
+
+	return [hcg[0], f * 100, v * 100];
+};
+
+convert.hcg.hsl = function (hcg) {
+	const c = hcg[1] / 100;
+	const g = hcg[2] / 100;
+
+	const l = g * (1.0 - c) + 0.5 * c;
+	let s = 0;
+
+	if (l > 0.0 && l < 0.5) {
+		s = c / (2 * l);
+	} else
+	if (l >= 0.5 && l < 1.0) {
+		s = c / (2 * (1 - l));
+	}
+
+	return [hcg[0], s * 100, l * 100];
+};
+
+convert.hcg.hwb = function (hcg) {
+	const c = hcg[1] / 100;
+	const g = hcg[2] / 100;
+	const v = c + g * (1.0 - c);
+	return [hcg[0], (v - c) * 100, (1 - v) * 100];
+};
+
+convert.hwb.hcg = function (hwb) {
+	const w = hwb[1] / 100;
+	const b = hwb[2] / 100;
+	const v = 1 - b;
+	const c = v - w;
+	let g = 0;
+
+	if (c < 1) {
+		g = (v - c) / (1 - c);
+	}
+
+	return [hwb[0], c * 100, g * 100];
+};
+
+convert.apple.rgb = function (apple) {
+	return [(apple[0] / 65535) * 255, (apple[1] / 65535) * 255, (apple[2] / 65535) * 255];
+};
+
+convert.rgb.apple = function (rgb) {
+	return [(rgb[0] / 255) * 65535, (rgb[1] / 255) * 65535, (rgb[2] / 255) * 65535];
+};
+
+convert.gray.rgb = function (args) {
+	return [args[0] / 100 * 255, args[0] / 100 * 255, args[0] / 100 * 255];
+};
+
+convert.gray.hsl = function (args) {
+	return [0, 0, args[0]];
+};
+
+convert.gray.hsv = convert.gray.hsl;
+
+convert.gray.hwb = function (gray) {
+	return [0, 100, gray[0]];
+};
+
+convert.gray.cmyk = function (gray) {
+	return [0, 0, 0, gray[0]];
+};
+
+convert.gray.lab = function (gray) {
+	return [gray[0], 0, 0];
+};
+
+convert.gray.hex = function (gray) {
+	const val = Math.round(gray[0] / 100 * 255) & 0xFF;
+	const integer = (val << 16) + (val << 8) + val;
+
+	const string = integer.toString(16).toUpperCase();
+	return '000000'.substring(string.length) + string;
+};
+
+convert.rgb.gray = function (rgb) {
+	const val = (rgb[0] + rgb[1] + rgb[2]) / 3;
+	return [val / 255 * 100];
+};
+
+
+/***/ }),
+
+/***/ 1575:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const conversions = __nccwpck_require__(9692);
+const route = __nccwpck_require__(5873);
+
+const convert = {};
+
+const models = Object.keys(conversions);
+
+function wrapRaw(fn) {
+	const wrappedFn = function (...args) {
+		const arg0 = args[0];
+		if (arg0 === undefined || arg0 === null) {
+			return arg0;
+		}
+
+		if (arg0.length > 1) {
+			args = arg0;
+		}
+
+		return fn(args);
+	};
+
+	// Preserve .conversion property if there is one
+	if ('conversion' in fn) {
+		wrappedFn.conversion = fn.conversion;
+	}
+
+	return wrappedFn;
+}
+
+function wrapRounded(fn) {
+	const wrappedFn = function (...args) {
+		const arg0 = args[0];
+
+		if (arg0 === undefined || arg0 === null) {
+			return arg0;
+		}
+
+		if (arg0.length > 1) {
+			args = arg0;
+		}
+
+		const result = fn(args);
+
+		// We're assuming the result is an array here.
+		// see notice in conversions.js; don't use box types
+		// in conversion functions.
+		if (typeof result === 'object') {
+			for (let len = result.length, i = 0; i < len; i++) {
+				result[i] = Math.round(result[i]);
+			}
+		}
+
+		return result;
+	};
+
+	// Preserve .conversion property if there is one
+	if ('conversion' in fn) {
+		wrappedFn.conversion = fn.conversion;
+	}
+
+	return wrappedFn;
+}
+
+models.forEach(fromModel => {
+	convert[fromModel] = {};
+
+	Object.defineProperty(convert[fromModel], 'channels', {value: conversions[fromModel].channels});
+	Object.defineProperty(convert[fromModel], 'labels', {value: conversions[fromModel].labels});
+
+	const routes = route(fromModel);
+	const routeModels = Object.keys(routes);
+
+	routeModels.forEach(toModel => {
+		const fn = routes[toModel];
+
+		convert[fromModel][toModel] = wrapRounded(fn);
+		convert[fromModel][toModel].raw = wrapRaw(fn);
+	});
+});
+
+module.exports = convert;
+
+
+/***/ }),
+
+/***/ 5873:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const conversions = __nccwpck_require__(9692);
+
+/*
+	This function routes a model to all other models.
+
+	all functions that are routed have a property `.conversion` attached
+	to the returned synthetic function. This property is an array
+	of strings, each with the steps in between the 'from' and 'to'
+	color models (inclusive).
+
+	conversions that are not possible simply are not included.
+*/
+
+function buildGraph() {
+	const graph = {};
+	// https://jsperf.com/object-keys-vs-for-in-with-closure/3
+	const models = Object.keys(conversions);
+
+	for (let len = models.length, i = 0; i < len; i++) {
+		graph[models[i]] = {
+			// http://jsperf.com/1-vs-infinity
+			// micro-opt, but this is simple.
+			distance: -1,
+			parent: null
+		};
+	}
+
+	return graph;
+}
+
+// https://en.wikipedia.org/wiki/Breadth-first_search
+function deriveBFS(fromModel) {
+	const graph = buildGraph();
+	const queue = [fromModel]; // Unshift -> queue -> pop
+
+	graph[fromModel].distance = 0;
+
+	while (queue.length) {
+		const current = queue.pop();
+		const adjacents = Object.keys(conversions[current]);
+
+		for (let len = adjacents.length, i = 0; i < len; i++) {
+			const adjacent = adjacents[i];
+			const node = graph[adjacent];
+
+			if (node.distance === -1) {
+				node.distance = graph[current].distance + 1;
+				node.parent = current;
+				queue.unshift(adjacent);
+			}
+		}
+	}
+
+	return graph;
+}
+
+function link(from, to) {
+	return function (args) {
+		return to(from(args));
+	};
+}
+
+function wrapConversion(toModel, graph) {
+	const path = [graph[toModel].parent, toModel];
+	let fn = conversions[graph[toModel].parent][toModel];
+
+	let cur = graph[toModel].parent;
+	while (graph[cur].parent) {
+		path.unshift(graph[cur].parent);
+		fn = link(conversions[graph[cur].parent][cur], fn);
+		cur = graph[cur].parent;
+	}
+
+	fn.conversion = path;
+	return fn;
+}
+
+module.exports = function (fromModel) {
+	const graph = deriveBFS(fromModel);
+	const conversion = {};
+
+	const models = Object.keys(graph);
+	for (let len = models.length, i = 0; i < len; i++) {
+		const toModel = models[i];
+		const node = graph[toModel];
+
+		if (node.parent === null) {
+			// No possible conversion, or this node is the source model.
+			continue;
+		}
+
+		conversion[toModel] = wrapConversion(toModel, graph);
+	}
+
+	return conversion;
+};
+
+
+
+/***/ }),
+
+/***/ 1546:
+/***/ ((module) => {
+
+"use strict";
+
+
+module.exports = {
+	"aliceblue": [240, 248, 255],
+	"antiquewhite": [250, 235, 215],
+	"aqua": [0, 255, 255],
+	"aquamarine": [127, 255, 212],
+	"azure": [240, 255, 255],
+	"beige": [245, 245, 220],
+	"bisque": [255, 228, 196],
+	"black": [0, 0, 0],
+	"blanchedalmond": [255, 235, 205],
+	"blue": [0, 0, 255],
+	"blueviolet": [138, 43, 226],
+	"brown": [165, 42, 42],
+	"burlywood": [222, 184, 135],
+	"cadetblue": [95, 158, 160],
+	"chartreuse": [127, 255, 0],
+	"chocolate": [210, 105, 30],
+	"coral": [255, 127, 80],
+	"cornflowerblue": [100, 149, 237],
+	"cornsilk": [255, 248, 220],
+	"crimson": [220, 20, 60],
+	"cyan": [0, 255, 255],
+	"darkblue": [0, 0, 139],
+	"darkcyan": [0, 139, 139],
+	"darkgoldenrod": [184, 134, 11],
+	"darkgray": [169, 169, 169],
+	"darkgreen": [0, 100, 0],
+	"darkgrey": [169, 169, 169],
+	"darkkhaki": [189, 183, 107],
+	"darkmagenta": [139, 0, 139],
+	"darkolivegreen": [85, 107, 47],
+	"darkorange": [255, 140, 0],
+	"darkorchid": [153, 50, 204],
+	"darkred": [139, 0, 0],
+	"darksalmon": [233, 150, 122],
+	"darkseagreen": [143, 188, 143],
+	"darkslateblue": [72, 61, 139],
+	"darkslategray": [47, 79, 79],
+	"darkslategrey": [47, 79, 79],
+	"darkturquoise": [0, 206, 209],
+	"darkviolet": [148, 0, 211],
+	"deeppink": [255, 20, 147],
+	"deepskyblue": [0, 191, 255],
+	"dimgray": [105, 105, 105],
+	"dimgrey": [105, 105, 105],
+	"dodgerblue": [30, 144, 255],
+	"firebrick": [178, 34, 34],
+	"floralwhite": [255, 250, 240],
+	"forestgreen": [34, 139, 34],
+	"fuchsia": [255, 0, 255],
+	"gainsboro": [220, 220, 220],
+	"ghostwhite": [248, 248, 255],
+	"gold": [255, 215, 0],
+	"goldenrod": [218, 165, 32],
+	"gray": [128, 128, 128],
+	"green": [0, 128, 0],
+	"greenyellow": [173, 255, 47],
+	"grey": [128, 128, 128],
+	"honeydew": [240, 255, 240],
+	"hotpink": [255, 105, 180],
+	"indianred": [205, 92, 92],
+	"indigo": [75, 0, 130],
+	"ivory": [255, 255, 240],
+	"khaki": [240, 230, 140],
+	"lavender": [230, 230, 250],
+	"lavenderblush": [255, 240, 245],
+	"lawngreen": [124, 252, 0],
+	"lemonchiffon": [255, 250, 205],
+	"lightblue": [173, 216, 230],
+	"lightcoral": [240, 128, 128],
+	"lightcyan": [224, 255, 255],
+	"lightgoldenrodyellow": [250, 250, 210],
+	"lightgray": [211, 211, 211],
+	"lightgreen": [144, 238, 144],
+	"lightgrey": [211, 211, 211],
+	"lightpink": [255, 182, 193],
+	"lightsalmon": [255, 160, 122],
+	"lightseagreen": [32, 178, 170],
+	"lightskyblue": [135, 206, 250],
+	"lightslategray": [119, 136, 153],
+	"lightslategrey": [119, 136, 153],
+	"lightsteelblue": [176, 196, 222],
+	"lightyellow": [255, 255, 224],
+	"lime": [0, 255, 0],
+	"limegreen": [50, 205, 50],
+	"linen": [250, 240, 230],
+	"magenta": [255, 0, 255],
+	"maroon": [128, 0, 0],
+	"mediumaquamarine": [102, 205, 170],
+	"mediumblue": [0, 0, 205],
+	"mediumorchid": [186, 85, 211],
+	"mediumpurple": [147, 112, 219],
+	"mediumseagreen": [60, 179, 113],
+	"mediumslateblue": [123, 104, 238],
+	"mediumspringgreen": [0, 250, 154],
+	"mediumturquoise": [72, 209, 204],
+	"mediumvioletred": [199, 21, 133],
+	"midnightblue": [25, 25, 112],
+	"mintcream": [245, 255, 250],
+	"mistyrose": [255, 228, 225],
+	"moccasin": [255, 228, 181],
+	"navajowhite": [255, 222, 173],
+	"navy": [0, 0, 128],
+	"oldlace": [253, 245, 230],
+	"olive": [128, 128, 0],
+	"olivedrab": [107, 142, 35],
+	"orange": [255, 165, 0],
+	"orangered": [255, 69, 0],
+	"orchid": [218, 112, 214],
+	"palegoldenrod": [238, 232, 170],
+	"palegreen": [152, 251, 152],
+	"paleturquoise": [175, 238, 238],
+	"palevioletred": [219, 112, 147],
+	"papayawhip": [255, 239, 213],
+	"peachpuff": [255, 218, 185],
+	"peru": [205, 133, 63],
+	"pink": [255, 192, 203],
+	"plum": [221, 160, 221],
+	"powderblue": [176, 224, 230],
+	"purple": [128, 0, 128],
+	"rebeccapurple": [102, 51, 153],
+	"red": [255, 0, 0],
+	"rosybrown": [188, 143, 143],
+	"royalblue": [65, 105, 225],
+	"saddlebrown": [139, 69, 19],
+	"salmon": [250, 128, 114],
+	"sandybrown": [244, 164, 96],
+	"seagreen": [46, 139, 87],
+	"seashell": [255, 245, 238],
+	"sienna": [160, 82, 45],
+	"silver": [192, 192, 192],
+	"skyblue": [135, 206, 235],
+	"slateblue": [106, 90, 205],
+	"slategray": [112, 128, 144],
+	"slategrey": [112, 128, 144],
+	"snow": [255, 250, 250],
+	"springgreen": [0, 255, 127],
+	"steelblue": [70, 130, 180],
+	"tan": [210, 180, 140],
+	"teal": [0, 128, 128],
+	"thistle": [216, 191, 216],
+	"tomato": [255, 99, 71],
+	"turquoise": [64, 224, 208],
+	"violet": [238, 130, 238],
+	"wheat": [245, 222, 179],
+	"white": [255, 255, 255],
+	"whitesmoke": [245, 245, 245],
+	"yellow": [255, 255, 0],
+	"yellowgreen": [154, 205, 50]
+};
 
 
 /***/ }),
@@ -4039,6 +6159,216 @@ function load(callback) {
 module.exports = function () {
   // https://mths.be/emoji
   return /\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62(?:\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67|\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74|\uDB40\uDC77\uDB40\uDC6C\uDB40\uDC73)\uDB40\uDC7F|\uD83D\uDC68(?:\uD83C\uDFFC\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68\uD83C\uDFFB|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFE])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFD])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFC])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83D\uDC68|(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D[\uDC66\uDC67])|[\u2695\u2696\u2708]\uFE0F|\uD83D[\uDC66\uDC67]|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|(?:\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708])\uFE0F|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C[\uDFFB-\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFB\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFC\u200D\uD83E\uDD1D\u200D\uD83D\uDC69)\uD83C\uDFFB|\uD83E\uDDD1(?:\uD83C\uDFFF\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1(?:\uD83C[\uDFFB-\uDFFF])|\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1)|(?:\uD83E\uDDD1\uD83C\uDFFE\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFF\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFE])|(?:\uD83E\uDDD1\uD83C\uDFFC\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFD\u200D\uD83E\uDD1D\u200D\uD83D\uDC69)(?:\uD83C[\uDFFB\uDFFC])|\uD83D\uDC69(?:\uD83C\uDFFE\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFC-\uDFFF])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|(?:\uD83E\uDDD1\uD83C\uDFFD\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFE\u200D\uD83E\uDD1D\u200D\uD83D\uDC69)(?:\uD83C[\uDFFB-\uDFFD])|\uD83D\uDC69\u200D\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D[\uDC66\uDC67])|(?:\uD83D\uDC41\uFE0F\u200D\uD83D\uDDE8|\uD83D\uDC69(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|(?:(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)\uFE0F|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF])\u200D[\u2640\u2642]|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uD83C[\uDFFB-\uDFFF])\u200D[\u2640\u2642]|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD6-\uDDDD])(?:(?:\uD83C[\uDFFB-\uDFFF])\u200D[\u2640\u2642]|\u200D[\u2640\u2642])|\uD83C\uDFF4\u200D\u2620)\uFE0F|\uD83D\uDC69\u200D\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|\uD83C\uDFF3\uFE0F\u200D\uD83C\uDF08|\uD83D\uDC15\u200D\uD83E\uDDBA|\uD83D\uDC69\u200D\uD83D\uDC66|\uD83D\uDC69\u200D\uD83D\uDC67|\uD83C\uDDFD\uD83C\uDDF0|\uD83C\uDDF4\uD83C\uDDF2|\uD83C\uDDF6\uD83C\uDDE6|[#\*0-9]\uFE0F\u20E3|\uD83C\uDDE7(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEF\uDDF1-\uDDF4\uDDF6-\uDDF9\uDDFB\uDDFC\uDDFE\uDDFF])|\uD83C\uDDF9(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDED\uDDEF-\uDDF4\uDDF7\uDDF9\uDDFB\uDDFC\uDDFF])|\uD83C\uDDEA(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDED\uDDF7-\uDDFA])|\uD83E\uDDD1(?:\uD83C[\uDFFB-\uDFFF])|\uD83C\uDDF7(?:\uD83C[\uDDEA\uDDF4\uDDF8\uDDFA\uDDFC])|\uD83D\uDC69(?:\uD83C[\uDFFB-\uDFFF])|\uD83C\uDDF2(?:\uD83C[\uDDE6\uDDE8-\uDDED\uDDF0-\uDDFF])|\uD83C\uDDE6(?:\uD83C[\uDDE8-\uDDEC\uDDEE\uDDF1\uDDF2\uDDF4\uDDF6-\uDDFA\uDDFC\uDDFD\uDDFF])|\uD83C\uDDF0(?:\uD83C[\uDDEA\uDDEC-\uDDEE\uDDF2\uDDF3\uDDF5\uDDF7\uDDFC\uDDFE\uDDFF])|\uD83C\uDDED(?:\uD83C[\uDDF0\uDDF2\uDDF3\uDDF7\uDDF9\uDDFA])|\uD83C\uDDE9(?:\uD83C[\uDDEA\uDDEC\uDDEF\uDDF0\uDDF2\uDDF4\uDDFF])|\uD83C\uDDFE(?:\uD83C[\uDDEA\uDDF9])|\uD83C\uDDEC(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEE\uDDF1-\uDDF3\uDDF5-\uDDFA\uDDFC\uDDFE])|\uD83C\uDDF8(?:\uD83C[\uDDE6-\uDDEA\uDDEC-\uDDF4\uDDF7-\uDDF9\uDDFB\uDDFD-\uDDFF])|\uD83C\uDDEB(?:\uD83C[\uDDEE-\uDDF0\uDDF2\uDDF4\uDDF7])|\uD83C\uDDF5(?:\uD83C[\uDDE6\uDDEA-\uDDED\uDDF0-\uDDF3\uDDF7-\uDDF9\uDDFC\uDDFE])|\uD83C\uDDFB(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDEE\uDDF3\uDDFA])|\uD83C\uDDF3(?:\uD83C[\uDDE6\uDDE8\uDDEA-\uDDEC\uDDEE\uDDF1\uDDF4\uDDF5\uDDF7\uDDFA\uDDFF])|\uD83C\uDDE8(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDEE\uDDF0-\uDDF5\uDDF7\uDDFA-\uDDFF])|\uD83C\uDDF1(?:\uD83C[\uDDE6-\uDDE8\uDDEE\uDDF0\uDDF7-\uDDFB\uDDFE])|\uD83C\uDDFF(?:\uD83C[\uDDE6\uDDF2\uDDFC])|\uD83C\uDDFC(?:\uD83C[\uDDEB\uDDF8])|\uD83C\uDDFA(?:\uD83C[\uDDE6\uDDEC\uDDF2\uDDF3\uDDF8\uDDFE\uDDFF])|\uD83C\uDDEE(?:\uD83C[\uDDE8-\uDDEA\uDDF1-\uDDF4\uDDF6-\uDDF9])|\uD83C\uDDEF(?:\uD83C[\uDDEA\uDDF2\uDDF4\uDDF5])|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uD83C[\uDFFB-\uDFFF])|(?:[\u261D\u270A-\u270D]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC70\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDCAA\uDD74\uDD7A\uDD90\uDD95\uDD96\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD36\uDDB5\uDDB6\uDDBB\uDDD2-\uDDD5])(?:\uD83C[\uDFFB-\uDFFF])|(?:[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF93\uDFA0-\uDFCA\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF4\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC3E\uDC40\uDC42-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDD7A\uDD95\uDD96\uDDA4\uDDFB-\uDE4F\uDE80-\uDEC5\uDECC\uDED0-\uDED2\uDED5\uDEEB\uDEEC\uDEF4-\uDEFA\uDFE0-\uDFEB]|\uD83E[\uDD0D-\uDD3A\uDD3C-\uDD45\uDD47-\uDD71\uDD73-\uDD76\uDD7A-\uDDA2\uDDA5-\uDDAA\uDDAE-\uDDCA\uDDCD-\uDDFF\uDE70-\uDE73\uDE78-\uDE7A\uDE80-\uDE82\uDE90-\uDE95])|(?:[#\*0-9\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u231A\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB-\u25FE\u2600-\u2604\u260E\u2611\u2614\u2615\u2618\u261D\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u267F\u2692-\u2697\u2699\u269B\u269C\u26A0\u26A1\u26AA\u26AB\u26B0\u26B1\u26BD\u26BE\u26C4\u26C5\u26C8\u26CE\u26CF\u26D1\u26D3\u26D4\u26E9\u26EA\u26F0-\u26F5\u26F7-\u26FA\u26FD\u2702\u2705\u2708-\u270D\u270F\u2712\u2714\u2716\u271D\u2721\u2728\u2733\u2734\u2744\u2747\u274C\u274E\u2753-\u2755\u2757\u2763\u2764\u2795-\u2797\u27A1\u27B0\u27BF\u2934\u2935\u2B05-\u2B07\u2B1B\u2B1C\u2B50\u2B55\u3030\u303D\u3297\u3299]|\uD83C[\uDC04\uDCCF\uDD70\uDD71\uDD7E\uDD7F\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE02\uDE1A\uDE2F\uDE32-\uDE3A\uDE50\uDE51\uDF00-\uDF21\uDF24-\uDF93\uDF96\uDF97\uDF99-\uDF9B\uDF9E-\uDFF0\uDFF3-\uDFF5\uDFF7-\uDFFF]|\uD83D[\uDC00-\uDCFD\uDCFF-\uDD3D\uDD49-\uDD4E\uDD50-\uDD67\uDD6F\uDD70\uDD73-\uDD7A\uDD87\uDD8A-\uDD8D\uDD90\uDD95\uDD96\uDDA4\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA-\uDE4F\uDE80-\uDEC5\uDECB-\uDED2\uDED5\uDEE0-\uDEE5\uDEE9\uDEEB\uDEEC\uDEF0\uDEF3-\uDEFA\uDFE0-\uDFEB]|\uD83E[\uDD0D-\uDD3A\uDD3C-\uDD45\uDD47-\uDD71\uDD73-\uDD76\uDD7A-\uDDA2\uDDA5-\uDDAA\uDDAE-\uDDCA\uDDCD-\uDDFF\uDE70-\uDE73\uDE78-\uDE7A\uDE80-\uDE82\uDE90-\uDE95])\uFE0F|(?:[\u261D\u26F9\u270A-\u270D]|\uD83C[\uDF85\uDFC2-\uDFC4\uDFC7\uDFCA-\uDFCC]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66-\uDC78\uDC7C\uDC81-\uDC83\uDC85-\uDC87\uDC8F\uDC91\uDCAA\uDD74\uDD75\uDD7A\uDD90\uDD95\uDD96\uDE45-\uDE47\uDE4B-\uDE4F\uDEA3\uDEB4-\uDEB6\uDEC0\uDECC]|\uD83E[\uDD0F\uDD18-\uDD1F\uDD26\uDD30-\uDD39\uDD3C-\uDD3E\uDDB5\uDDB6\uDDB8\uDDB9\uDDBB\uDDCD-\uDDCF\uDDD1-\uDDDD])/g;
+};
+
+
+/***/ }),
+
+/***/ 2679:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+const path = __nccwpck_require__(5622);
+const chalk = __nccwpck_require__(991);
+const logSymbols = __nccwpck_require__(4603);
+const plur = __nccwpck_require__(9834);
+const stringWidth = __nccwpck_require__(8598);
+const ansiEscapes = __nccwpck_require__(3649);
+const {supportsHyperlink} = __nccwpck_require__(2269);
+const getRuleDocs = __nccwpck_require__(9570);
+
+module.exports = (results, data) => {
+	const lines = [];
+	let errorCount = 0;
+	let warningCount = 0;
+	let maxLineWidth = 0;
+	let maxColumnWidth = 0;
+	let maxMessageWidth = 0;
+	let showLineNumbers = false;
+
+	results
+		.sort((a, b) => {
+			if (a.errorCount === b.errorCount) {
+				return b.warningCount - a.warningCount;
+			}
+
+			if (a.errorCount === 0) {
+				return -1;
+			}
+
+			if (b.errorCount === 0) {
+				return 1;
+			}
+
+			return b.errorCount - a.errorCount;
+		})
+		.forEach(result => {
+			const {messages, filePath} = result;
+
+			if (messages.length === 0) {
+				return;
+			}
+
+			errorCount += result.errorCount;
+			warningCount += result.warningCount;
+
+			if (lines.length !== 0) {
+				lines.push({type: 'separator'});
+			}
+
+			const firstErrorOrWarning = messages.find(({severity}) => severity === 2) || messages[0];
+
+			lines.push({
+				type: 'header',
+				filePath,
+				relativeFilePath: path.relative('.', filePath),
+				firstLineCol: firstErrorOrWarning.line + ':' + firstErrorOrWarning.column
+			});
+
+			messages
+				.sort((a, b) => {
+					if (a.fatal === b.fatal && a.severity === b.severity) {
+						if (a.line === b.line) {
+							return a.column < b.column ? -1 : 1;
+						}
+
+						return a.line < b.line ? -1 : 1;
+					}
+
+					if ((a.fatal || a.severity === 2) && (!b.fatal || b.severity !== 2)) {
+						return 1;
+					}
+
+					return -1;
+				})
+				.forEach(x => {
+					let {message} = x;
+
+					// Stylize inline code blocks
+					message = message.replace(/\B`(.*?)`\B|\B'(.*?)'\B/g, (m, p1, p2) => chalk.bold(p1 || p2));
+
+					const line = String(x.line || 0);
+					const column = String(x.column || 0);
+					const lineWidth = stringWidth(line);
+					const columnWidth = stringWidth(column);
+					const messageWidth = stringWidth(message);
+
+					maxLineWidth = Math.max(lineWidth, maxLineWidth);
+					maxColumnWidth = Math.max(columnWidth, maxColumnWidth);
+					maxMessageWidth = Math.max(messageWidth, maxMessageWidth);
+					showLineNumbers = showLineNumbers || x.line || x.column;
+
+					lines.push({
+						type: 'message',
+						severity: (x.fatal || x.severity === 2 || x.severity === 'error') ? 'error' : 'warning',
+						line,
+						lineWidth,
+						column,
+						columnWidth,
+						message,
+						messageWidth,
+						ruleId: x.ruleId || ''
+					});
+				});
+		});
+
+	let output = '\n';
+
+	if (process.stdout.isTTY && !process.env.CI) {
+		// Make relative paths Command-clickable in iTerm
+		output += ansiEscapes.iTerm.setCwd();
+	}
+
+	output += lines.map(x => {
+		if (x.type === 'header') {
+			// Add the line number so it's Command-click'able in some terminals
+			// Use dim & gray for terminals like iTerm that doesn't support `hidden`
+			const position = showLineNumbers ? chalk.hidden.dim.gray(`:${x.firstLineCol}`) : '';
+
+			return '  ' + chalk.underline(x.relativeFilePath) + position;
+		}
+
+		if (x.type === 'message') {
+			let ruleUrl;
+
+			try {
+				ruleUrl = data.rulesMeta[x.ruleId].docs.url;
+			} catch {
+				try {
+					ruleUrl = getRuleDocs(x.ruleId).url;
+				} catch {}
+			}
+
+			const line = [
+				'',
+				x.severity === 'warning' ? logSymbols.warning : logSymbols.error,
+				' '.repeat(maxLineWidth - x.lineWidth) + chalk.dim(x.line + chalk.gray(':') + x.column),
+				' '.repeat(maxColumnWidth - x.columnWidth) + x.message,
+				' '.repeat(maxMessageWidth - x.messageWidth) +
+				(ruleUrl && supportsHyperlink(process.stdout) ? ansiEscapes.link(chalk.dim(x.ruleId), ruleUrl) : chalk.dim(x.ruleId))
+			];
+
+			if (!showLineNumbers) {
+				line.splice(2, 1);
+			}
+
+			return line.join('  ');
+		}
+
+		return '';
+	}).join('\n') + '\n\n';
+
+	if (warningCount > 0) {
+		output += '  ' + chalk.yellow(`${warningCount} ${plur('warning', warningCount)}`) + '\n';
+	}
+
+	if (errorCount > 0) {
+		output += '  ' + chalk.red(`${errorCount} ${plur('error', errorCount)}`) + '\n';
+	}
+
+	return (errorCount + warningCount) > 0 ? output : '';
+};
+
+
+/***/ }),
+
+/***/ 9570:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const plugins = __nccwpck_require__(1534);
+
+module.exports = function(ruleKey) {
+  const [pluginName, ruleName] = ruleKey.split('/');
+
+  if (!ruleName) {
+    return {
+      exactMatch: true,
+      url: 'https://eslint.org/docs/rules/' + ruleKey
+    };
+  }
+
+  const found = plugins[pluginName];
+
+  if (!found) {
+    throw new Error('No documentation found for rule');
+  }
+
+  if (found.docs) {
+    return {
+      exactMatch: true,
+      url: `${found.docs}${ruleName}.md`
+    };
+  }
+
+  if (found.repository) {
+    return {
+      exactMatch: false,
+      url: found.repository
+    };
+  }
+
+  throw new Error('No documentation found for rule');
 };
 
 
@@ -4354,22 +6684,6 @@ function gunningFog(counts) {
 
 /***/ }),
 
-/***/ 4766:
-/***/ ((module) => {
-
-"use strict";
-
-module.exports = (flag, argv) => {
-	argv = argv || process.argv;
-	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
-	const pos = argv.indexOf(prefix + flag);
-	const terminatorPos = argv.indexOf('--');
-	return pos !== -1 && (terminatorPos === -1 ? true : pos < terminatorPos);
-};
-
-
-/***/ }),
-
 /***/ 5588:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -4416,6 +6730,24 @@ if (typeof Object.create === 'function') {
     }
   }
 }
+
+
+/***/ }),
+
+/***/ 7185:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+/* module decorator */ module = __nccwpck_require__.nmd(module);
+
+const irregularPlurals = __nccwpck_require__(8634);
+
+// Ensure nobody can modify each others Map
+Object.defineProperty(module, 'exports', {
+	get() {
+		return new Map(Object.entries(irregularPlurals));
+	}
+});
 
 
 /***/ }),
@@ -4556,6 +6888,54 @@ function isPlainObject(o) {
 }
 
 exports.isPlainObject = isPlainObject;
+
+
+/***/ }),
+
+/***/ 1589:
+/***/ ((module) => {
+
+"use strict";
+
+
+module.exports = () => {
+	if (process.platform !== 'win32') {
+		return true;
+	}
+
+	return Boolean(process.env.CI) ||
+		Boolean(process.env.WT_SESSION) || // Windows Terminal
+		process.env.TERM_PROGRAM === 'vscode' ||
+		process.env.TERM === 'xterm-256color' ||
+		process.env.TERM === 'alacritty';
+};
+
+
+/***/ }),
+
+/***/ 4603:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+const chalk = __nccwpck_require__(991);
+const isUnicodeSupported = __nccwpck_require__(1589);
+
+const main = {
+	info: chalk.blue('ℹ'),
+	success: chalk.green('✔'),
+	warning: chalk.yellow('⚠'),
+	error: chalk.red('✖')
+};
+
+const fallback = {
+	info: chalk.blue('i'),
+	success: chalk.green('√'),
+	warning: chalk.yellow('‼'),
+	error: chalk.red('×')
+};
+
+module.exports = isUnicodeSupported() ? main : fallback;
 
 
 /***/ }),
@@ -10156,6 +12536,45 @@ function tokenizerFactory(childType, expression) {
 
 /***/ }),
 
+/***/ 9834:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+const irregularPlurals = __nccwpck_require__(7185);
+
+module.exports = (word, plural, count) => {
+	if (typeof plural === 'number') {
+		count = plural;
+	}
+
+	if (irregularPlurals.has(word.toLowerCase())) {
+		plural = irregularPlurals.get(word.toLowerCase());
+
+		const firstLetter = word.charAt(0);
+		const isFirstLetterUpperCase = firstLetter === firstLetter.toUpperCase();
+		if (isFirstLetterUpperCase) {
+			plural = firstLetter.toUpperCase() + plural.slice(1);
+		}
+
+		const isWholeWordUpperCase = word === word.toUpperCase();
+		if (isWholeWordUpperCase) {
+			plural = plural.toUpperCase();
+		}
+	} else if (typeof plural !== 'string') {
+		plural = (word.replace(/(?:s|x|z|ch|sh)$/i, '$&e').replace(/([^aeiou])y$/i, '$1ie') + 's')
+			.replace(/i?e?s$/i, match => {
+				const isTailLowerCase = word.slice(-1) === word.slice(-1).toLowerCase();
+				return isTailLowerCase ? match.toLowerCase() : match.toUpperCase();
+			});
+	}
+
+	return Math.abs(count) === 1 ? word : plural;
+};
+
+
+/***/ }),
+
 /***/ 4053:
 /***/ (function(module) {
 
@@ -10693,84 +13112,6 @@ function quotation(value, open, close) {
   }
 
   return result
-}
-
-
-/***/ }),
-
-/***/ 5616:
-/***/ ((module) => {
-
-"use strict";
-/*!
- * repeat-string <https://github.com/jonschlinkert/repeat-string>
- *
- * Copyright (c) 2014-2015, Jon Schlinkert.
- * Licensed under the MIT License.
- */
-
-
-
-/**
- * Results cache
- */
-
-var res = '';
-var cache;
-
-/**
- * Expose `repeat`
- */
-
-module.exports = repeat;
-
-/**
- * Repeat the given `string` the specified `number`
- * of times.
- *
- * **Example:**
- *
- * ```js
- * var repeat = require('repeat-string');
- * repeat('A', 5);
- * //=> AAAAA
- * ```
- *
- * @param {String} `string` The string to repeat
- * @param {Number} `number` The number of times to repeat the string
- * @return {String} Repeated string
- * @api public
- */
-
-function repeat(str, num) {
-  if (typeof str !== 'string') {
-    throw new TypeError('expected a string');
-  }
-
-  // cover common, quick use cases
-  if (num === 1) return str;
-  if (num === 2) return str + str;
-
-  var max = str.length * num;
-  if (cache !== str || typeof cache === 'undefined') {
-    cache = str;
-    res = '';
-  } else if (res.length >= max) {
-    return res.substr(0, max);
-  }
-
-  while (max > res.length && num > 1) {
-    if (num & 1) {
-      res += str;
-    }
-
-    num >>= 1;
-    str += str;
-  }
-
-  res += str;
-  res = res.substr(0, max);
-  return res;
 }
 
 
@@ -13229,13 +15570,133 @@ module.exports = string => typeof string === 'string' ? string.replace(ansiRegex
 
 /***/ }),
 
-/***/ 4479:
+/***/ 2269:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+const supportsColor = __nccwpck_require__(8443);
+const hasFlag = __nccwpck_require__(3582);
+
+function parseVersion(versionString) {
+	if (/^\d{3,4}$/.test(versionString)) {
+		// Env var doesn't always use dots. example: 4601 => 46.1.0
+		const m = /(\d{1,2})(\d{2})/.exec(versionString);
+		return {
+			major: 0,
+			minor: parseInt(m[1], 10),
+			patch: parseInt(m[2], 10)
+		};
+	}
+
+	const versions = (versionString || '').split('.').map(n => parseInt(n, 10));
+	return {
+		major: versions[0],
+		minor: versions[1],
+		patch: versions[2]
+	};
+}
+
+function supportsHyperlink(stream) {
+	const {env} = process;
+
+	if ('FORCE_HYPERLINK' in env) {
+		return !(env.FORCE_HYPERLINK.length > 0 && parseInt(env.FORCE_HYPERLINK, 10) === 0);
+	}
+
+	if (hasFlag('no-hyperlink') || hasFlag('no-hyperlinks') || hasFlag('hyperlink=false') || hasFlag('hyperlink=never')) {
+		return false;
+	}
+
+	if (hasFlag('hyperlink=true') || hasFlag('hyperlink=always')) {
+		return true;
+	}
+
+	// If they specify no colors, they probably don't want hyperlinks.
+	if (!supportsColor.supportsColor(stream)) {
+		return false;
+	}
+
+	if (stream && !stream.isTTY) {
+		return false;
+	}
+
+	if (process.platform === 'win32') {
+		return false;
+	}
+
+	if ('NETLIFY' in env) {
+		return true;
+	}
+
+	if ('CI' in env) {
+		return false;
+	}
+
+	if ('TEAMCITY_VERSION' in env) {
+		return false;
+	}
+
+	if ('TERM_PROGRAM' in env) {
+		const version = parseVersion(env.TERM_PROGRAM_VERSION);
+
+		switch (env.TERM_PROGRAM) {
+			case 'iTerm.app':
+				if (version.major === 3) {
+					return version.minor >= 1;
+				}
+
+				return version.major > 3;
+			// No default
+		}
+	}
+
+	if ('VTE_VERSION' in env) {
+		// 0.50.0 was supposed to support hyperlinks, but throws a segfault
+		if (env.VTE_VERSION === '0.50.0') {
+			return false;
+		}
+
+		const version = parseVersion(env.VTE_VERSION);
+		return version.major > 0 || version.minor >= 50;
+	}
+
+	return false;
+}
+
+module.exports = {
+	supportsHyperlink,
+	stdout: supportsHyperlink(process.stdout),
+	stderr: supportsHyperlink(process.stderr)
+};
+
+
+/***/ }),
+
+/***/ 3582:
+/***/ ((module) => {
+
+"use strict";
+
+
+module.exports = (flag, argv = process.argv) => {
+	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+	const position = argv.indexOf(prefix + flag);
+	const terminatorPosition = argv.indexOf('--');
+	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+};
+
+
+/***/ }),
+
+/***/ 8443:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 const os = __nccwpck_require__(2087);
-const hasFlag = __nccwpck_require__(4766);
+const tty = __nccwpck_require__(3867);
+const hasFlag = __nccwpck_require__(3582);
 
 const {env} = process;
 
@@ -13251,10 +15712,11 @@ if (hasFlag('no-color') ||
 	hasFlag('color=always')) {
 	forceColor = 1;
 }
+
 if ('FORCE_COLOR' in env) {
-	if (env.FORCE_COLOR === true || env.FORCE_COLOR === 'true') {
+	if (env.FORCE_COLOR === 'true') {
 		forceColor = 1;
-	} else if (env.FORCE_COLOR === false || env.FORCE_COLOR === 'false') {
+	} else if (env.FORCE_COLOR === 'false') {
 		forceColor = 0;
 	} else {
 		forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
@@ -13274,7 +15736,7 @@ function translateLevel(level) {
 	};
 }
 
-function supportsColor(stream) {
+function supportsColor(haveStream, streamIsTTY) {
 	if (forceColor === 0) {
 		return 0;
 	}
@@ -13289,7 +15751,7 @@ function supportsColor(stream) {
 		return 2;
 	}
 
-	if (stream && !stream.isTTY && forceColor === undefined) {
+	if (haveStream && !streamIsTTY && forceColor === undefined) {
 		return 0;
 	}
 
@@ -13300,15 +15762,10 @@ function supportsColor(stream) {
 	}
 
 	if (process.platform === 'win32') {
-		// Node.js 7.5.0 is the first version of Node.js to include a patch to
-		// libuv that enables 256 color output on Windows. Anything earlier and it
-		// won't work. However, here we target Node.js 8 at minimum as it is an LTS
-		// release, and Node.js 7 is not. Windows 10 build 10586 is the first Windows
-		// release that supports 256 colors. Windows 10 build 14931 is the first release
-		// that supports 16m/TrueColor.
+		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
 		const osRelease = os.release().split('.');
 		if (
-			Number(process.versions.node.split('.')[0]) >= 8 &&
 			Number(osRelease[0]) >= 10 &&
 			Number(osRelease[2]) >= 10586
 		) {
@@ -13319,7 +15776,7 @@ function supportsColor(stream) {
 	}
 
 	if ('CI' in env) {
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
+		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'GITHUB_ACTIONS', 'BUILDKITE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
 			return 1;
 		}
 
@@ -13362,14 +15819,14 @@ function supportsColor(stream) {
 }
 
 function getSupportLevel(stream) {
-	const level = supportsColor(stream);
+	const level = supportsColor(stream, stream && stream.isTTY);
 	return translateLevel(level);
 }
 
 module.exports = {
 	supportsColor: getSupportLevel,
-	stdout: getSupportLevel(process.stdout),
-	stderr: getSupportLevel(process.stderr)
+	stdout: translateLevel(supportsColor(true, tty.isatty(1))),
+	stderr: translateLevel(supportsColor(true, tty.isatty(2)))
 };
 
 
@@ -15028,290 +17485,16 @@ function parseOrigin(origin) {
 
 /***/ }),
 
-/***/ 8366:
+/***/ 2088:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-var supported = __nccwpck_require__(4479).stderr.hasBasic
-var width = __nccwpck_require__(8598)
-var stringify = __nccwpck_require__(3391)
-var repeat = __nccwpck_require__(5616)
-var statistics = __nccwpck_require__(788)
-var sort = __nccwpck_require__(5611)
+const vfileToEslint = __nccwpck_require__(8628)
+const eslintFormatterPretty = __nccwpck_require__(2679)
 
-module.exports = reporter
-
-var push = [].push
-
-// `log-symbols` without chalk:
-/* istanbul ignore next - Windows. */
-var chars =
-  process.platform === 'win32'
-    ? {error: '×', warning: '‼'}
-    : {error: '✖', warning: '⚠'}
-
-var labels = {
-  true: 'error',
-  false: 'warning',
-  null: 'info',
-  undefined: 'info'
-}
-
-// Report a file’s messages.
-function reporter(files, options) {
-  var settings = options || {}
-  var one
-
-  if (!files) {
-    return ''
-  }
-
-  // Error.
-  if ('name' in files && 'message' in files) {
-    return String(files.stack || files)
-  }
-
-  // One file.
-  if (!('length' in files)) {
-    one = true
-    files = [files]
-  }
-
-  return format(transform(files, settings), one, settings)
-}
-
-function transform(files, options) {
-  var index = -1
-  var rows = []
-  var all = []
-  var sizes = {}
-  var messages
-  var offset
-  var message
-  var messageRows
-  var row
-  var key
-
-  while (++index < files.length) {
-    messages = sort({messages: files[index].messages.concat()}).messages
-    messageRows = []
-    offset = -1
-
-    while (++offset < messages.length) {
-      message = messages[offset]
-
-      if (!options.silent || message.fatal) {
-        all.push(message)
-
-        row = {
-          location: stringify(
-            message.location.end.line && message.location.end.column
-              ? message.location
-              : message.location.start
-          ),
-          label: labels[message.fatal],
-          reason:
-            (message.stack || message.message) +
-            (options.verbose && message.note ? '\n' + message.note : ''),
-          ruleId: message.ruleId || '',
-          source: message.source || ''
-        }
-
-        for (key in row) {
-          sizes[key] = Math.max(size(row[key]), sizes[key] || 0)
-        }
-
-        messageRows.push(row)
-      }
-    }
-
-    if ((!options.quiet && !options.silent) || messageRows.length) {
-      rows.push({type: 'file', file: files[index], stats: statistics(messages)})
-      push.apply(rows, messageRows)
-    }
-  }
-
-  return {rows: rows, stats: statistics(all), sizes: sizes}
-}
-
-function format(map, one, options) {
-  var enabled = options.color == null ? supported : options.color
-  var lines = []
-  var index = -1
-  var stats
-  var row
-  var line
-  var reason
-  var rest
-  var match
-
-  while (++index < map.rows.length) {
-    row = map.rows[index]
-
-    if (row.type === 'file') {
-      stats = row.stats
-      line = row.file.history[0] || options.defaultName || '<stdin>'
-
-      line =
-        one && !options.defaultName && !row.file.history[0]
-          ? ''
-          : (enabled
-              ? '\x1b[4m' /* Underline. */ +
-                (stats.fatal
-                  ? '\x1b[31m' /* Red. */
-                  : stats.total
-                  ? '\x1b[33m' /* Yellow. */
-                  : '\x1b[32m') /* Green. */ +
-                line +
-                '\x1b[39m\x1b[24m'
-              : line) +
-            (row.file.stored && row.file.path !== row.file.history[0]
-              ? ' > ' + row.file.path
-              : '')
-
-      if (!stats.total) {
-        line =
-          (line ? line + ': ' : '') +
-          (row.file.stored
-            ? enabled
-              ? '\x1b[33mwritten\x1b[39m' /* Yellow. */
-              : 'written'
-            : 'no issues found')
-      }
-
-      if (line) {
-        if (index && map.rows[index - 1].type !== 'file') {
-          lines.push('')
-        }
-
-        lines.push(line)
-      }
-    } else {
-      reason = row.reason
-      match = /\r?\n|\r/.exec(reason)
-
-      if (match) {
-        rest = reason.slice(match.index)
-        reason = reason.slice(0, match.index)
-      } else {
-        rest = ''
-      }
-
-      lines.push(
-        (
-          '  ' +
-          repeat(' ', map.sizes.location - size(row.location)) +
-          row.location +
-          '  ' +
-          (enabled
-            ? (row.label === 'error'
-                ? '\x1b[31m' /* Red. */
-                : '\x1b[33m') /* Yellow. */ +
-              row.label +
-              '\x1b[39m'
-            : row.label) +
-          repeat(' ', map.sizes.label - size(row.label)) +
-          '  ' +
-          reason +
-          repeat(' ', map.sizes.reason - size(reason)) +
-          '  ' +
-          row.ruleId +
-          repeat(' ', map.sizes.ruleId - size(row.ruleId)) +
-          '  ' +
-          (row.source || '')
-        ).replace(/ +$/, '') + rest
-      )
-    }
-  }
-
-  stats = map.stats
-
-  if (stats.fatal || stats.warn) {
-    line = ''
-
-    if (stats.fatal) {
-      line =
-        (enabled
-          ? '\x1b[31m' /* Red. */ + chars.error + '\x1b[39m'
-          : chars.error) +
-        ' ' +
-        stats.fatal +
-        ' ' +
-        (labels.true + (stats.fatal === 1 ? '' : 's'))
-    }
-
-    if (stats.warn) {
-      line =
-        (line ? line + ', ' : '') +
-        (enabled
-          ? '\x1b[33m' /* Yellow. */ + chars.warning + '\x1b[39m'
-          : chars.warning) +
-        ' ' +
-        stats.warn +
-        ' ' +
-        (labels.false + (stats.warn === 1 ? '' : 's'))
-    }
-
-    if (stats.total !== stats.fatal && stats.total !== stats.warn) {
-      line = stats.total + ' messages (' + line + ')'
-    }
-
-    lines.push('', line)
-  }
-
-  return lines.join('\n')
-}
-
-// Get the length of `value`, ignoring ANSI sequences.
-function size(value) {
-  var match = /\r?\n|\r/.exec(value)
-  return width(match ? value.slice(0, match.index) : value)
-}
-
-
-/***/ }),
-
-/***/ 5611:
-/***/ ((module) => {
-
-"use strict";
-
-
-module.exports = sort
-
-var severities = {
-  true: 2,
-  false: 1,
-  null: 0,
-  undefined: 0
-}
-
-function sort(file) {
-  file.messages.sort(comparator)
-  return file
-}
-
-function comparator(a, b) {
-  return (
-    check(a, b, 'line') ||
-    check(a, b, 'column') ||
-    severities[b.fatal] - severities[a.fatal] ||
-    compare(a, b, 'source') ||
-    compare(a, b, 'ruleId') ||
-    compare(a, b, 'reason') ||
-    0
-  )
-}
-
-function check(a, b, property) {
-  return (a[property] || 0) - (b[property] || 0)
-}
-
-function compare(a, b, property) {
-  return (a[property] || '').localeCompare(b[property] || '')
-}
+module.exports = (vfiles) => eslintFormatterPretty(vfileToEslint(vfiles))
 
 
 /***/ }),
@@ -15370,6 +17553,40 @@ function statistics(files) {
     }
   }
 }
+
+
+/***/ }),
+
+/***/ 8628:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+
+const statistics = __nccwpck_require__(788)
+
+module.exports = vfiles =>
+  vfiles.map(vfile => {
+    const stats = statistics(vfile)
+
+    return {
+      filePath: vfile.path,
+      messages: vfile.messages.map(x => {
+        return {
+          fatal: x.fatal === true,
+          severity: x.fatal ? 2 : 1,
+          ruleId: [x.source, x.ruleId].filter(Boolean).join(':') || null,
+          line: x.line,
+          column: x.column,
+          endLine: x.location.end.line,
+          endColumn: x.location.end.column,
+          message: x.reason
+        }
+      }),
+      errorCount: stats.fatal,
+      warningCount: stats.nonfatal
+    }
+  })
 
 
 /***/ }),
@@ -15724,6 +17941,22 @@ module.exports = JSON.parse('["a","able","aboard","about","above","absent","acce
 
 /***/ }),
 
+/***/ 1534:
+/***/ ((module) => {
+
+"use strict";
+module.exports = JSON.parse('{"66nao":{"repository":"https://github.com/66nao/eslint-glugin-66nao"},"6river":{"repository":"https://github.com/6RiverSystems/eslint-plugin-6river"},"7g":{"repository":"https://github.com/7Geese/eslint-plugin-7g"},"@-k/eslint-plugin":{"repository":"https://github.com/AdrieanKhisbe/my-node-libraries"},"@0x4447/eslint-plugin-0x4447":{"repository":"https://github.com/0x4447/0x4447-plugin-eslint"},"@0y0/eslint-plugin-react":{"repository":"https://github.com/o0y0o/f2e-dev-toolkit"},"@2chevskii/eslint-plugin-putout":{"repository":"https://github.com/2chevskii/eslint-plugin-putout"},"@6river/eslint-plugin-6river":{"repository":"https://github.com/6RiverSystems/eslint-plugin-6river"},"@acmecryptocorp/eslint-plugin":{"repository":"https://github.com/acmecryptocorp/eslint-plugin"},"@ada-support/eslint-plugin-object-newline":{"repository":"https://github.com/AdaSupport/eslint-plugin-object-newline"},"@agumy/eslint-plugin-react-classname-sort":{"repository":"https://github.com/agumy/eslint-plugin-react-classname-sort"},"@akphi/eslint-plugin":{"repository":"https://github.com/akphi/config-tester"},"@alexrafael10/eslint-plugin-prettier-vue":{"repository":"https://github.com/alexrafael10/eslint-plugin-prettier-vue"},"@alexreardon/eslint-plugin-react-hooks":{"repository":"https://github.com/facebook/react"},"@alibaba-aero/eslint-plugin-json":{"repository":"https://github.com/azeemba/eslint-plugin-json"},"@americanexpress/eslint-plugin-one-app":{"repository":"https://github.com/americanexpress/one-app-cli"},"@anansi/eslint-plugin":{"repository":"https://github.com/ntucker/anansi"},"@angelventura/eslint-plugin-ejs":{"repository":"https://github.com/angelventura/eslint-plugin-ejs"},"@angular-eslint/eslint-plugin":{"repository":"https://github.com/angular-eslint/angular-eslint"},"@angular-eslint/eslint-plugin-template":{"repository":"https://github.com/angular-eslint/angular-eslint"},"@anireact/eslint-plugin":{"repository":"https://github.com/anireact/zc"},"@applitools/eslint-plugin-compat":{"repository":"https://github.com/applitools/eslint-plugin-compat"},"@appulate/eslint-plugin":{"repository":"https://github.com/appulate/eslint-plugin-appulate"},"@asbjorn/eslint-plugin-groq":{"repository":"https://github.com/asbjornh/eslint-plugin-groq"},"@atlauncher/eslint-plugin-atlauncher":{"repository":"https://github.com/ATLauncher/javascript"},"@autoguru/eslint-plugin":{"repository":"https://github.com/autoguru-au/octane"},"@avaly/eslint-plugin-import-order":{"repository":"https://github.com/avaly/eslint-plugin-import-order"},"@babel/eslint-plugin-development":{"repository":"https://github.com/babel/babel"},"@beequeue/eslint-plugin":{"repository":"https://github.com/BeeeQueue/eslint-plugin"},"@bel0v/eslint-plugin-deprecate":{"repository":"https://github.com/AlexMost/eslint-plugin-deprecate"},"@bem-react/eslint-plugin":{"repository":"https://github.com/bem/bem-react"},"@bentley/eslint-plugin":{"repository":"https://github.com/imodeljs/imodeljs"},"@berlysia/generator-eslint-plugin":{"repository":"https://github.com/berlysia/generator-eslint-plugin"},"@bigtaddy/eslint-plugin-simple-import-sort":{"repository":"https://github.com/bigtaddy/eslint-plugin-simple-import-sort"},"@black_hole/eslint-plugin":{"repository":"https://github.com/netless-io/eslint-plugin-netless"},"@black_hole/eslint-plugin-black_hole":{"repository":"https://github.com/netless-io/eslint-plugin-netless"},"@black_hole/eslint-plugin-netless":{"repository":"https://github.com/netless-io/eslint-plugin-netless"},"@blackflux/eslint-plugin-rules":{"repository":"https://github.com/blackflux/eslint-plugin-rules"},"@bluecateng/eslint-plugin":{"repository":"https://github.com/bluecatengineering/eslint-packages"},"@bluelovers/eslint-plugin":{"repository":"https://github.com/bluelovers/ws-node-bluelovers"},"@blueprintjs/eslint-plugin":{"repository":"https://github.com/palantir/blueprint"},"@bo2kshelf/eslint-plugin":{"repository":"https://github.com/bo2kshelf/eslint-plugin"},"@br/eslint-plugin-laws-of-the-game":{"repository":"https://github.com/bleacherreport/eslint-plugin-laws-of-the-game"},"@breadhead/eslint-plugin-react-hooks":{"repository":"https://github.com/breadhead/eslint-plugin-react-hooks"},"@breautek/eslint-plugin":{"repository":"https://github.com/breautek/eslint-plugin"},"@brettz9/eslint-plugin":{"repository":"https://github.com/brettz9/eslint-plugin"},"@busybox/eslint-plugin-json":{"repository":"https://github.com/davidNHK/busybox"},"@bve/eslint-plugin":{"repository":"https://github.com/bvejs/bve"},"@byteever/eslint-plugin":{"repository":"https://github.com/byteever/eslint-plugin"},"@canarise/snowpack-eslint-plugin":{"repository":"https://github.com/leebeydoun/snowpack-eslint-plugin"},"@change-org/eslint-plugin-change":{"repository":"https://github.com/change/javascript"},"@channel.io/eslint-plugin":{"repository":"https://github.com/channel-io/eslint-plugin"},"@chanzuckerberg/eslint-plugin-stories":{"repository":"https://github.com/chanzuckerberg/frontend-libs"},"@chensi-thunder/eslint-plugin-vue":{"repository":"https://github.com/chensi-thunder/eslint-plugin-vue"},"@clark/eslint-plugin-import-helpers-with-package":{"repository":"https://github.com/ClarkSource/eslint-config"},"@cloudfour/eslint-plugin":{"repository":"https://github.com/cloudfour/eslint-config"},"@clr/eslint-plugin-clarity-adoption":{"repository":"https://github.com/vmware/clarity"},"@codaco/eslint-plugin-spellcheck":{"repository":"https://github.com/codaco/eslint-plugin-spellcheck"},"@codar/eslint-plugin":{"repository":"https://github.com/codarme/stylelint"},"@cognibox/eslint-plugin-no-super-async":{"repository":"https://github.com/cognibox/eslint-no-super-async"},"@cognibox/eslint-plugin-vue-require-component-key":{"repository":"https://github.com/cognibox/eslint-vue-require-component-key"},"@cometjs/eslint-plugin":{"repository":"https://github.com/cometkim/cometjs"},"@coorpacademy/eslint-plugin-coorpacademy":{"repository":"https://github.com/CoorpAcademy/eslint-plugin-coorpacademy"},"@copyist/eslint-plugin":{"repository":"https://github.com/ooooevan/copyist"},"@corbinu/eslint-plugin-typescript":{"repository":"https://github.com/typescript-eslint/typescript-eslint"},"@corefw/eslint-plugin-corefw":{"repository":"https://github.com/corefw/core-eslint-plugin-corefw"},"@creuna/eslint-plugin-prop-types-csharp":{"repository":"https://github.com/Creuna-Oslo/eslint-plugin-prop-types-csharp"},"@croutonn/eslint-plugin":{"repository":"https://github.com/croutonn/eslint-plugin"},"@cypress/eslint-plugin-dev":{"repository":"https://github.com/cypress-io/cypress"},"@cypress/eslint-plugin-json":{"repository":"https://github.com/cypress-io/eslint-plugin-json"},"@d-hussar/eslint-plugin":{"repository":"https://github.com/d-hussar/eslint-plugin"},"@d0whc3r/eslint-plugin-stencil":{"repository":"https://github.com/d0whc3r/stencil-eslint"},"@dbenfouzari/eslint-plugin-react-native":{"repository":"https://github.com/dbenfouzari/eslint-plugin-react-native"},"@dekode/eslint-plugin":{"repository":"https://github.com/DekodeInteraktiv/coding-standards"},"@demands/eslint-plugin-import":{"repository":"https://github.com/benmosher/eslint-plugin-import"},"@destinationstransfers/eslint-plugin":{"repository":"https://github.com/destinationstransfers/eslint-plugin"},"@devahn/eslint-plugin-compat":{"repository":"https://github.com/panda0603/eslint-plugin-compat-mod"},"@devsisters/eslint-plugin-web":{"repository":"https://github.com/devsisters/web-packages"},"@divyagnan/eslint-plugin-inline-styles":{"repository":"https://github.com/divyagnan/eslint-plugin-inline-styles"},"@doochik/eslint-plugin-location":{"repository":"https://github.com/doochik/eslint-plugin-location"},"@dr.potapoff/eslint-plugin":{"repository":"https://github.com/typescript-eslint/typescript-eslint"},"@dreipol/eslint-plugin-export-keys":{"repository":"https://github.com/dreipol/eslint-plugin-export-keys"},"@dropthebeatbro/eslint-plugin-jsx-a11y":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"@dword-design/eslint-plugin-import-alias":{"repository":"https://github.com/dword-design/eslint-plugin-import-alias"},"@edenhealth/eslint-plugin-react-native":{"repository":"https://github.com/edenhealth/eslint-plugin-react-native"},"@einride/eslint-plugin":{"repository":"https://github.com/einride/eslint-plugin"},"@elastic/eslint-plugin-eui":{"repository":"https://github.com/elastic/eui"},"@elastic/eslint-plugin-kibana-custom":{"repository":"https://github.com/elastic/kibana"},"@elastic/eslint-plugin-react-intl":{"repository":"https://github.com/elastic/eslint-plugin-react-intl"},"@elfin-fe/eslint-plugin-elfin":{"repository":"https://github.com/elfinFE/elfin-convention"},"@elfinct/eslint-plugin-elfin":{"repository":"https://github.com/elfinFE/elfin-convention"},"@elyby/eslint-plugin":{"repository":"https://github.com/elyby/eslint-config"},"@emotion/eslint-plugin":{"docs":"https://github.com/emotion-js/emotion/blob/master/packages/eslint-plugin/docs/rules/","repository":"https://github.com/emotion-js/emotion"},"@endpass/eslint-plugin-endpass":{"repository":"https://github.com/endpass/endpass-core"},"@episerver/eslint-plugin-cms":{"repository":"https://github.com/seriema/eslint-plugin-episerver-cms"},"@eroad/eslint-plugin":{"repository":"https://github.com/eRoad-Software/eslint-plugin"},"@eroad/eslint-plugin-typescript":{"repository":"https://github.com/eRoad-Software/eslint-plugin"},"@essex/eslint-plugin":{"repository":"https://github.com/microsoft/essex-alpha-build-infra"},"@euberdeveloper/eslint-plugin-typescript":{"repository":"https://github.com/euberdeveloper/eslint-plugin-typescript"},"@evojs/eslint-plugin":{"repository":"https://github.com/evotool/js-eslint-plugin"},"@f-fjs/eslint-plugin-formatjs":{"repository":"https://github.com/formatjs/formatjs"},"@fabriece/eslint-plugin-react-typescript":{"repository":"https://github.com/sfabriece/eslint-plugin-react-typescript"},"@fasttime/eslint-plugin":{"repository":"https://github.com/fasttime/eslint-plugin"},"@fellow/eslint-plugin-coffee":{"repository":"https://github.com/aminland/eslint-plugin-coffee"},"@fengyinchao/eslint-plugin-custom":{"repository":"https://github.com/fengyinchao/eslint-plugin-custom"},"@fictiv/eslint-plugin-import":{"repository":"https://github.com/benmosher/eslint-plugin-import"},"@finos/eslint-plugin-legend-studio":{"repository":"https://github.com/finos/legend-studio"},"@flowio/eslint-plugin-flowio":{"repository":"https://github.com/flowcommerce/eslint-plugin-flowio"},"@floydspace/eslint-plugin-rules":{"repository":"https://github.com/floydspace/eslint-plugin-rules"},"@fluentui/eslint-plugin":{"repository":"https://github.com/microsoft/fluentui"},"@fluentwind/eslint-plugin-vue-i18n":{"repository":"https://github.com/fluentwind/eslint-plugin-vue-i18n"},"@frogeducation/eslint-plugin-jquery-compat":{"repository":"https://github.com/frogeducation/eslint-plugin-jquery-compat"},"@fuelrats/eslint-plugin":{"docs":"https://github.com/FuelRats/eslint-config-fuelrats/blob/master/packages/eslint-plugin/docs/rules/","repository":"https://github.com/FuelRats/eslint-config-fuelrats"},"@funboxteam/eslint-plugin-no-only-tests":{"repository":"https://github.com/funbox/eslint-plugin-no-only-tests"},"@fundingoptions/eslint-plugin-funding-options":{"repository":"https://github.com/FundingOptions/eslint-plugin-funding-options"},"@furugomu/eslint-plugin":{"repository":"https://github.com/furugomu/eslint-plugin"},"@fuzeman/eslint-plugin-import":{"repository":"https://github.com/fuzeman/eslint-plugin-import"},"@genus-machina/eslint-plugin-node":{"repository":"https://github.com/genus-machina/eslint-plugin-node"},"@getstation/eslint-plugin-markdown":{"repository":"https://github.com/eslint/eslint-plugin-markdown"},"@godaddy/eslint-plugin-react-intl":{"repository":"https://github.com/godaddy/eslint-plugin-react-intl"},"@goodforonefare/eslint-plugin-shopify":{"repository":"https://github.com/Shopify/eslint-plugin-shopify"},"@graphql-eslint/eslint-plugin":{"repository":"https://github.com/dotansimha/graphql-eslint"},"@gravitywelluk/eslint-plugin-test":{"repository":"https://github.com/GravitywellUK/eslint-plugin"},"@grncdr/eslint-plugin-react-hooks":{"repository":"https://github.com/facebook/react"},"@h4iuiuc/eslint-plugin":{"repository":"https://github.com/hack4impact-uiuc/eslint-plugin"},"@hack4impact-uiuc/eslint-plugin":{"repository":"https://github.com/hack4impact-uiuc/eslint-plugin"},"@hallettj/eslint-plugin-ts-graphql":{"repository":"https://github.com/Originate/eslint-plugin-ts-graphql"},"@hapi/eslint-plugin":{"repository":"https://github.com/hapijs/eslint-plugin"},"@hapi/eslint-plugin-hapi":{"repository":"https://github.com/hapijs/eslint-plugin-hapi"},"@happ/eslint-plugin":{"repository":"https://github.com/happ-agency/happ"},"@hd-ui/eslint-plugin-hd-ui":{"repository":"https://github.com/hd-ui/hd-ui"},"@hh.ru/eslint-plugin-import-rules":{"repository":"https://github.com/hhru/eslint-plugin-import-rules"},"@hn-ui/eslint-plugin-hn-ui":{"repository":"https://github.com/hn-ui/hn-ui"},"@homer0/eslint-plugin":{"repository":"https://github.com/homer0/packages"},"@hrbrain/eslint-plugin":{"repository":"https://github.com/hrbrain/eslint-plugin"},"@html-eslint/eslint-plugin":{"repository":"https://github.com/yeonjuan/html-eslint"},"@hypnosphi/eslint-plugin-import":{"repository":"https://github.com/benmosher/eslint-plugin-import"},"@hypnosphi/eslint-plugin-react":{"repository":"https://github.com/yannickcr/eslint-plugin-react"},"@iamstarkov/eslint-plugin-require-path-exists":{"repository":"https://github.com/BohdanTkachenko/eslint-plugin-require-path-exists"},"@ianwremmel/eslint-plugin-ianwremmel":{"repository":"https://github.com/ianwremmel/eslint-plugin-ianwremmel"},"@igneel64/eslint-plugin-dangerous":{"repository":"https://github.com/igneel64/eslint-plugin-dangerous"},"@intlify/eslint-plugin-vue-i18n":{"repository":"https://github.com/intlify/eslint-plugin-vue-i18n"},"@itgenio/eslint-plugin-import":{"repository":"https://github.com/benmosher/eslint-plugin-import"},"@jakzo/eslint-plugin":{"repository":"https://github.com/jakzo/things"},"@jamashita/eslint-plugin":{"repository":"https://github.com/jamashita/eslint-plugin"},"@jambit/eslint-plugin-typed-redux-saga":{"repository":"https://github.com/jambit/eslint-plugin-typed-redux-saga"},"@jarrodldavis/eslint-plugin-tailwindcss":{"repository":"https://github.com/jarrodldavis/eslint-plugin-tailwindcss"},"@jetbrains/eslint-plugin-angular":{"repository":"https://github.com/Gillespie59/eslint-plugin-angularjs"},"@joshbcondie/eslint-plugin":{"repository":"https://github.com/joshbcondie/eslint-plugin"},"@joyeecheung/eslint-plugin-node-core":{"repository":"https://github.com/joyeecheung/eslint-plugin-node-core"},"@jsx-lite/eslint-plugin":{"repository":"https://github.com/BuilderIO/jsx-lite"},"@jupyterlab/eslint-plugin-jinja":{"repository":"https://github.com/alexkuz/eslint-plugin-jinja"},"@kentcdodds/eslint-plugin-react":{"repository":"https://github.com/yannickcr/eslint-plugin-react"},"@kfed/eslint-plugin-i18n":{"repository":"https://github.com/Kyr/eslint-plugin-i18n"},"@khanacademy/eslint-plugin":{"repository":"https://github.com/Khan/eslint-plugin-khan"},"@kmdavis/eslint-plugin-sort-imports":{"repository":"https://github.com/kmdavis/eslint-plugin-sort-imports"},"@kollabit/eslint-plugin":{"repository":"https://github.com/ionic-team/stencil-eslint"},"@ksjogo/eslint-plugin-import":{"repository":"https://github.com/benmosher/eslint-plugin-import"},"@ktxtr/eslint-plugin-prettier":{"repository":"https://github.com/kontextr/ktxtr-eslint-plugins"},"@kusotenpa/eslint-plugin":{"repository":"https://github.com/kusotenpa/eslint-plugin"},"@kyleshevlin/eslint-plugin":{"docs":"https://github.com/kyleshevlin/eslint-plugin/blob/master/docs/rules/","repository":"https://github.com/kyleshevlin/eslint-plugin"},"@layout-css/eslint-plugin-styled-components":{"repository":"https://github.com/studiosciences/layout-css"},"@lewisl9029/eslint-plugin-react-hooks":{"repository":"https://github.com/facebook/react"},"@lint-md/eslint-plugin":{"repository":"https://github.com/lint-md/eslint-plugin"},"@lint-ts-index/eslint-plugin":{"repository":"https://github.com/bbenoist/lint-ts-index"},"@linvain/eslint-plugin":{"repository":"https://github.com/linvain/linvain"},"@lwc/eslint-plugin-lwc":{"repository":"https://github.com/salesforce/eslint-plugin-lwc"},"@m6web/eslint-plugin-i18n":{"repository":"https://github.com/M6Web/eslint-plugin-m6web-i18n"},"@m6web/eslint-plugin-react":{"repository":"https://github.com/M6Web/eslint-tools"},"@m6web/eslint-plugin-vue":{"repository":"https://github.com/M6Web/eslint-tools"},"@magicspace/eslint-plugin":{"repository":"https://github.com/makeflow/magicspace"},"@manifoldco/eslint-plugin-stencil":{"repository":"https://github.com/manifoldco/eslint-plugin-stencil"},"@manu-xav/eslint-plugin-prettier-vue":{"repository":"https://github.com/meteorlxy/eslint-plugin-prettier-vue"},"@manuth/eslint-plugin-typescript":{"repository":"https://github.com/manuth/ESLintPresets"},"@manuth/typescript-eslint-plugin":{"repository":"https://github.com/manuth/TypeScriptESLintPlugin"},"@mapbox/eslint-plugin-script-tags":{"repository":"https://github.com/mapbox/eslint-plugin-script-tags"},"@mapbox/eslint-plugin-stickler":{"repository":"https://github.com/mapbox/stickler"},"@mariosetenal/eslint-plugin-css-modules":{"repository":"https://github.com/atfzl/eslint-plugin-css-modules"},"@marudor/eslint-plugin-header":{"repository":"https://github.com/Stuk/eslint-plugin-header"},"@materya/eslint-plugin":{"repository":"https://github.com/materya/eslint-config"},"@matsgottenbos/eslint-plugin-import-alias":{"repository":"https://github.com/matsgottenbos/eslint-plugin-import-alias"},"@medux/eslint-plugin-recommended":{"repository":"https://github.com/wooline/medux"},"@mesteche/eslint-plugin-neat-ternaries":{"repository":"https://github.com/mesteche/eslint-plugin-ternary"},"@michaeljaltamirano/eslint-plugin":{"repository":"https://github.com/michaeljaltamirano/eslint-plugin"},"@michaelkramer/eslint-plugin-facepalm":{"repository":"https://github.com/michaelkramer/eslint-plugin-facepalm"},"@minar-kotonoha/eslint-plugin-react-directives":{"repository":"https://github.com/chengzhuo5/eslint-plugin-react-directives"},"@mizdra/eslint-plugin-layout-shift":{"repository":"https://github.com/mizdra/eslint-plugin-layout-shift"},"@mkusaka/eslint-plugin-prefer-type-annotate":{"repository":"https://github.com/mkusaka/eslint-plugin-prefer-type-annotate"},"@mll-lab/eslint-plugin":{"repository":"https://github.com/mll-lab/eslint-plugin"},"@moneyforward/code-review-action-eslint-plugin":{"repository":"https://github.com/moneyforward/eslint-action"},"@mparticle/eslint-plugin":{"repository":"https://github.com/mparticle/eslint-plugin"},"@mtth/eslint-plugin":{"repository":"https://github.com/mtth/eslint-plugin"},"@mufan/eslint-plugin":{"repository":"https://github.com/makeflow/mufan-code"},"@musement/eslint-plugin":{"repository":"https://github.com/musement/eslint-plugin"},"@mysticatea/eslint-plugin":{"repository":"https://github.com/mysticatea/eslint-plugin"},"@mysticatea/eslint-plugin-vue":{"repository":"https://github.com/mysticatea/eslint-plugin-vue-trial"},"@naturacosmeticos/eslint-plugin-i18n-checker":{"repository":"https://github.com/natura-cosmeticos/eslint-plugin-i18n-checker"},"@netless/eslint-plugin":{"repository":"https://github.com/netless-io/eslint-plugin"},"@netless/eslint-plugin-netless":{"repository":"https://github.com/netless-io/eslint-plugin-netless"},"@newrelic/eslint-plugin-newrelic":{"repository":"https://github.com/NewRelic/eslint-plugin-newrelic"},"@nextcloud/eslint-plugin":{"docs":"https://github.com/nextcloud/eslint-plugin/blob/master/docs/rules/","repository":"https://github.com/nextcloud/eslint-plugin"},"@nextools/eslint-plugin":{"repository":"https://github.com/nextools/metarepo"},"@nisje/eslint-plugin":{"repository":"https://github.com/nisje/styleguide-javascript"},"@nod/eslint-plugin-nod":{"repository":"https://github.com/NOD-studios/eslint-plugin-nod"},"@notarize/eslint-plugin-react-intl-ensure":{"repository":"https://github.com/notarize/eslint-plugin-react-intl-ensure"},"@novemberborn/eslint-plugin-as-i-preach":{"repository":"https://github.com/novemberborn/as-i-preach"},"@nrwl/eslint-plugin-nx":{"repository":"https://github.com/nrwl/nx"},"@numso/eslint-plugin-import":{"repository":"https://github.com/numso/eslint-plugin-import"},"@octogonz/eslint-plugin":{"repository":"https://github.com/typescript-eslint/typescript-eslint"},"@openlayers/eslint-plugin":{"repository":"https://github.com/openlayers/eslint-plugin"},"@operation_code/eslint-plugin-custom-rules":{"repository":"https://github.com/operationcode/configs"},"@originate/eslint-plugin-ts-graphql":{"repository":"https://github.com/Originate/eslint-plugin-ts-graphql"},"@orzechowskid/eslint-plugin-typelint":{"repository":"https://github.com/orzechowskid/eslint-plugin-typelint"},"@ota-meshi/eslint-plugin":{"repository":"https://github.com/ota-meshi/eslint-plugin"},"@pathscale/eslint-plugin-vue3":{"repository":"https://github.com/pathscale/eslint-plugin-vue3"},"@pdq/eslint-plugin-pdq":{"repository":"https://github.com/pdq/eslint-plugin-pdq"},"@pgilad/eslint-plugin-react-redux":{"repository":"https://github.com/pgilad/eslint-plugin-react-redux"},"@phanect/eslint-plugin":{"repository":"https://github.com/phanect/eslint-plugin"},"@phryg1an/eslint-plugin-strict":{"repository":"https://github.com/fokye/eslint-plugin-strict"},"@poool/eslint-plugin":{"repository":"https://github.com/p3ol/eslint-config"},"@preconstruct/eslint-plugin-format-js-tag":{"repository":"https://github.com/preconstruct/preconstruct"},"@prodo/eslint-plugin":{"repository":"https://github.com/prodo-ai/prodo"},"@propelinc/eslint-plugin":{"repository":"https://github.com/typescript-eslint/typescript-eslint"},"@public-js/eslint-plugin":{"repository":"https://github.com/public-js/eslint-plugin"},"@qfoooo/eslint-plugin-base":{"repository":"https://github.com/qfoooo/qfoooo-eslint"},"@qooxdoo/eslint-plugin-qx":{"repository":"https://github.com/qooxdoo/eslint-plugin-qx"},"@quero/eslint-plugin-vue":{"repository":"https://github.com/quero-edu/guidelines"},"@rafaelgssa/eslint-plugin-local":{"repository":"https://github.com/rafaelgssa/eslint-plugin-local"},"@react-native-community/eslint-plugin":{"repository":"https://github.com/facebook/react-native"},"@redwoodjs/eslint-plugin-redwood":{"repository":"https://github.com/redwoodjs/redwood"},"@regru/eslint-plugin-jquery-dollar-sign-reference":{"repository":"https://github.com/regru/eslint-plugin-jquery-dollar-sign-reference"},"@regru/eslint-plugin-one-var":{"repository":"https://github.com/regru/eslint-plugin-one-var"},"@regru/eslint-plugin-prefer-early-return":{"repository":"https://github.com/regru/eslint-plugin-prefer-early-return"},"@rensovargas/eslint-plugin-riot":{"repository":"https://github.com/rensovargas/eslint-plugin-riot"},"@revved/eslint-plugin-immutable":{"repository":"https://github.com/jhusain/eslint-plugin-immutable"},"@rhangai/eslint-plugin":{"repository":"https://github.com/rhangai/config"},"@ridedott/eslint-plugin":{"repository":"https://github.com/ridedott/eslint-plugin"},"@roadmunk/eslint-plugin-roadmunk-custom":{"repository":"https://github.com/Roadmunk/eslint-plugin-roadmunk"},"@romeovs/eslint-plugin-css-modules":{"repository":"https://github.com/atfzl/eslint-plugin-css-modules"},"@rushplay/eslint-plugin-objects":{"repository":"https://github.com/RushPlay/eslint-plugin-objects"},"@rushstack/eslint-plugin-packlets":{"repository":"https://github.com/microsoft/rushstack"},"@rxts/eslint-plugin-prettier":{"repository":"https://github.com/prettier/eslint-plugin-prettier"},"@saji/eslint-plugin-brace-rules":{"repository":"https://github.com/marek-saji/eslint-plugin-brace-rules"},"@salesforce/eslint-plugin-aura":{"repository":"https://github.com/forcedotcom/eslint-plugin-aura"},"@salesforce/eslint-plugin-visualforce":{"repository":"https://github.com/forcedotcom/eslint-plugin-visualforce"},"@samual/eslint-plugin-hackmud2":{"repository":"https://github.com/samualtnorman/eslint-plugin-hackmud2"},"@santie/eslint-plugin-scheme":{"repository":"https://github.com/sieestaa/eslint-plugin-scheme"},"@satel/eslint-plugin":{"repository":"https://github.com/SatelCreative/eslint-plugin"},"@scitotec/eslint-plugin-rules":{"repository":"https://github.com/scitotec/eslint-plugin-scitotec-rules"},"@seatentacle/eslint-plugin":{"repository":"https://github.com/seatentacle/eslint-plugin"},"@seedcompany/eslint-plugin":{"repository":"https://github.com/seedcompany/eslint-plugin"},"@sentry-internal/eslint-plugin-sdk":{"repository":"https://github.com/getsentry/sentry-javascript"},"@severi/eslint-plugin-sort-imports-es6-autofix":{"repository":"https://github.com/schuchertmanagementberatung/eslint-plugin-sort-imports-es6-autofix"},"@sharegate/eslint-plugin-apricot":{"repository":"https://github.com/gsoft-inc/sg-eslint-plugin-apricot"},"@sharkykh/eslint-plugin-vue-extra":{"repository":"https://github.com/sharkykh/eslint-plugin-vue-extra"},"@shopify/eslint-plugin":{"repository":"https://github.com/Shopify/web-configs"},"@simplysm/eslint-plugin":{"repository":"https://github.com/kslhunter/simplysm"},"@sincronia/eslint-plugin":{"repository":"https://github.com/nuvolo/sincronia"},"@singlestore/eslint-plugin-react-hooks-disable-import":{"repository":"https://github.com/memsql/eslint-react-hooks-disable-import"},"@sinonjs/eslint-plugin-no-prototype-methods":{"repository":"https://github.com/sinonjs/eslint-plugin-no-prototype-methods"},"@spothero/eslint-plugin-spothero":{"repository":"https://github.com/spothero/eslint-plugin-spothero"},"@spotify/eslint-plugin":{"repository":"https://github.com/spotify/web-scripts"},"@sprucelabs/eslint-plugin-spruce":{"repository":"https://github.com/sprucelabsai/workspace.sprucebot-skills-kit"},"@starryinternet/eslint-plugin-starry":{"repository":"https://github.com/StarryInternet/eslint-plugin-starry"},"@stencil/eslint-plugin":{"repository":"https://github.com/ionic-team/stencil-eslint"},"@straits/eslint-plugin":{"repository":"https://github.com/peoro/straits-eslint-plugin"},"@studysync/eslint-plugin-jsx-conditionals":{"repository":"https://github.com/julianburr/eslint-plugin-jsx-conditionals"},"@studysync/eslint-plugin-material-ui":{"repository":"https://github.com/dkadrios/eslint-plugin-material-ui"},"@studysync/eslint-plugin-persnickety":{"repository":"https://github.com/dkadrios/eslint-plugin-persnickety"},"@superdispatch/eslint-plugin":{"repository":"https://github.com/superdispatch/js-tools"},"@superdispatch/eslint-plugin-ui":{"repository":"https://github.com/superdispatch/ui"},"@swissquote/eslint-plugin-swissquote":{"repository":"https://github.com/swissquote/crafty"},"@swrlab/eslint-plugin-swr":{"repository":"https://github.com/swrlab/eslint-plugin-swr"},"@tapsellorg/eslint-plugin":{"repository":"https://github.com/tapsellorg/eslint-plugin"},"@theforeman/eslint-plugin-foreman":{"repository":"https://github.com/theforeman/foreman-js"},"@theorem/eslint-plugin":{"repository":"https://github.com/Theorem/eslint-plugin"},"@thibaudcolas/eslint-plugin-cookbook":{"repository":"https://github.com/thibaudcolas/eslint-plugin-cookbook"},"@tinkoff/eslint-plugin":{"repository":"https://github.com/TinkoffCreditSystems/linters"},"@tinymce/eslint-plugin":{"repository":"https://github.com/tinymce/eslint-plugin"},"@tivac/eslint-plugin-svelte":{"repository":"https://github.com/tivac/eslint-plugin-svelte"},"@tripphamm/eslint-plugin":{"repository":"https://github.com/tripphamm/eslint-plugin-tripphamm"},"@ts-gql/eslint-plugin":{"repository":"https://github.com/Thinkmill/ts-gql"},"@twist/eslint-plugin-core":{"repository":"https://github.com/adobe/eslint-plugin-twist"},"@tyankatsu0105/eslint-plugin":{"repository":"https://github.com/tyankatsu0105/eslint-plugin"},"@tyankatsu0105/eslint-plugin-with-typescript":{"repository":"https://github.com/tyankatsu0105/eslint-plugin-with-typescript"},"@types/eslint-plugin-markdown":{"repository":"https://github.com/DefinitelyTyped/DefinitelyTyped"},"@typescript-eslint/eslint-plugin":{"docs":"https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/","repository":"https://github.com/typescript-eslint/typescript-eslint"},"@typescript-eslint/eslint-plugin-tslint":{"repository":"https://github.com/typescript-eslint/typescript-eslint"},"@ueno/eslint-plugin-internal":{"repository":"https://github.com/ueno-llc/styleguide"},"@upsilon/eslint-plugin-ember":{"repository":"https://github.com/upsilon-it/eslint-plugin-upsilon"},"@uwatch/eslint-plugin":{"repository":"https://github.com/uwatch-live/eslint-plugin"},"@versett/eslint-plugin-versett":{"repository":"https://github.com/versett/eslint-plugin-versett"},"@vertical-made/eslint-plugin-no-arithmetic":{"repository":"https://github.com/vertical-made/eslint-plugin-no-arithmetic"},"@vovkasm/eslint-plugin-std":{"repository":"https://github.com/vovkasm/eslint-plugin-std"},"@vue/eslint-plugin":{"repository":"https://github.com/vuejs/eslint-plugin-vue"},"@web-bee-ru/eslint-plugin":{"repository":"https://github.com/web-bee-ru/eslint-plugin"},"@webdevstudios/eslint-plugin-js-coding-standards":{"repository":"https://github.com/WebDevStudios/eslint-plugin-js-coding-standards"},"@weex-project/eslint-plugin-weex-bundle":{"repository":"https://github.com/Hanks10100/eslint-plugin-weex-bundle"},"@welldone-software/eslint-plugin":{"repository":"https://github.com/welldone-software/eslint-plugin-welldone"},"@wikimedia/eslint-plugin-jquery":{"docs":"https://github.com/wikimedia/eslint-plugin-jquery/blob/master/docs/rules/","repository":"https://github.com/wikimedia/eslint-plugin-jquery"},"@woocommerce/eslint-plugin":{"repository":"https://github.com/woocommerce/woocommerce-admin"},"@wordpress/eslint-plugin":{"repository":"https://github.com/WordPress/gutenberg"},"@xcritical/eslint-plugin-xcritical":{"repository":"https://github.com/xcritical-software/xc-front-presets"},"@xtrctio/eslint-plugin-disallow-date":{"repository":"https://github.com/xtrctio/eslint-plugin-disallow-date"},"@z-brain/eslint-plugin-api-entity-ref":{"repository":"https://github.com/z-brain/eslint-plugin-api-entity-ref"},"@zhike/eslint-plugin":{"repository":"https://github.com/zhike-team/eslint-plugin-zhike"},"@znemz/eslint-plugin-nem":{"repository":"https://github.com/nmccready/eslint-plugin-nem"},"@zsoltszavo/eslint-plugin-import-lines":{"repository":"https://github.com/zsoltszavo/eslint-plugin-import-lines"},"absolute-import":{"repository":"https://github.com/mcclowes/eslint-plugin-absolute-import"},"actions":{"repository":"https://github.com/ylemkimon/eslint-plugin-actions"},"actool":{"repository":"https://github.com/actool/eslint-plugin-actool"},"ad-hok":{"repository":"https://github.com/helixbass/eslint-plugin-ad-hok"},"adone":{"repository":"https://github.com/ciferox/eslint-plugin-adone"},"adonis":{"repository":"https://github.com/AdonisCommunity/eslint-plugin-adonis"},"adventure-land":{"repository":"https://github.com/davidtimmons/eslint-plugin-adventure-land"},"agoda-compat":{"repository":"https://github.com/amilajack/eslint-plugin-compat"},"agpl":{"repository":"https://github.com/ArekZc/eslint-plugin-agpl"},"agree":{"repository":"https://github.com/ast2018/eslint-plugin-agree"},"ahaha-miniprogram":{"repository":"https://github.com/littleprincewdk/eslint-plugin-ahaha-miniprogram"},"ala":{"repository":"https://github.com/alaameddeb/ESLint-plugin"},"algolia":{"repository":"https://github.com/algolia/eslint-plugin-algolia"},"ali":{"repository":"https://github.com/alibaba/f2e-spec"},"alias-paths":{"repository":"https://github.com/mkusaka/eslint-plugin-alias-paths"},"align":{"repository":"https://github.com/akluball/eslint-plugin-align"},"alint":{"repository":"https://github.com/AlanFoster/eslint-plugin-alint"},"alloy":{"repository":"https://github.com/appcelerator/eslint-plugin-alloy"},"alphabetize":{"repository":"https://github.com/NickHeiner/eslint-plugin-alphabetize"},"altair":{"repository":"https://github.com/altairtv/eslint-plugin-altair"},"altesis":{"repository":"https://github.com/AltesisPro/eslint-plugin-altesis"},"always":{"repository":"https://github.com/jenssimon/eslint-plugin-always"},"amd-imports":{"repository":"https://github.com/jkieboom/eslint-plugin-amd-imports"},"ami":{"repository":"https://github.com/ami-team/eslint-plugin-ami"},"angular":{"repository":"https://github.com/Gillespie59/eslint-plugin-angularjs"},"angular-hobbicloud":{"repository":"https://github.com/caglarcem/eslint-plugin-angular"},"angular-template-consistent-this":{"repository":"https://github.com/jerone/eslint-plugin-angular-template-consistent-this"},"angularjs":{"repository":"https://github.com/sahibinden/eslint-plugin-angularjs"},"angularrules":{"repository":"https://github.com/drBenway/eslint-angular"},"ante":{"repository":"https://github.com/twuni/eslint-plugin-ante"},"apa":{"repository":"https://github.com/lekrans/eslint-plugin-apa"},"apklab-frida":{"repository":"https://github.com/avast/eslint-plugin-apklab-frida"},"appjson":{"repository":"https://github.com/unfold/eslint-config-appjson"},"aqsc":{"repository":"https://github.com/qdhuadi/eslint-plugin-aqsc"},"arcadia":{"repository":"https://github.com/salesmessage/javascript"},"arguments":{"repository":"https://github.com/ronapelbaum/eslint-plugin-arguments"},"arista":{"repository":"https://github.com/aristanetworks/cloudvision-frontend-config"},"arithmetic":{"repository":"https://github.com/JonnyBurger/eslint-plugin-arithmetic"},"array-func":{"repository":"https://github.com/freaktechnik/eslint-plugin-array-func"},"aspida":{"repository":"https://github.com/ibuki2003/eslint-plugin-aspida"},"asrt":{"repository":"https://github.com/pzapalski/asrt"},"atlassian-webapis":{"repository":"https://github.com/samhh/eslint-plugin-atlassian-webapis"},"atomic-design":{"repository":"https://github.com/RyoNkmr/eslint-plugin-atomic-design"},"atomic-design-hierarchy":{"repository":"https://github.com/robinalaerts1/eslint-plugin-atomic-design-hierarchy"},"attributes":{"repository":"https://github.com/xjmforweb/eslint-plugin-attributes"},"aurelia":{"repository":"https://github.com/bryanrsmith/eslint-plugin-aurelia"},"auto-import-ts":{"repository":"https://github.com/abstractball/eslint-plugin-auto-import-ts"},"autofix":{"repository":"https://github.com/aladdin-add/eslint-plugin"},"ava":{"docs":"https://github.com/avajs/eslint-plugin-ava/blob/master/docs/rules/","repository":"https://github.com/avajs/eslint-plugin-ava"},"avoid-explicit-extension":{"repository":"https://github.com/rchougule/eslint-plugin-avoid-explicit-extension"},"avol":{"repository":"https://github.com/Avol-V/eslint-plugin-avol"},"axe":{"repository":"https://github.com/dequelabs/axe-core"},"azumuta":{"repository":"https://github.com/Azumuta/eslint-plugin-azumuta"},"babel":{"repository":"https://github.com/babel/eslint-plugin-babel"},"backbone":{"repository":"https://github.com/ilyavolodin/eslint-plugin-backbone"},"backpack":{"repository":"https://github.com/Skyscanner/eslint-plugin-backpack"},"bam":{"repository":"https://github.com/bamlab/eslint-plugin-bam"},"ban":{"docs":"https://github.com/remithomas/eslint-plugin-ban/blob/master/docs/rules/","repository":"https://github.com/remithomas/eslint-plugin-ban"},"ban-package-import":{"repository":"https://github.com/AlexandrKrivosheev/eslint-plugin-ban-package-import"},"banner-indentation-style":{"repository":"https://github.com/pangon/eslint-plugin-banner-indentation-style"},"banno":{"repository":"https://github.com/Banno/eslint-plugin-banno"},"bardjs":{"repository":"https://github.com/kpytang/eslint-plugin-bardjs"},"basad":{"repository":"https://github.com/EdenGottlieb/eslint-plugin-basad"},"base-style-config":{"repository":"https://github.com/gmullerb/base-style-config"},"bbva":{"repository":"https://github.com/BBVAEngineering/javascript"},"bdd":{"repository":"https://github.com/nate-wilkins/eslint-plugin-bdd"},"be-consistent":{"repository":"https://github.com/designfrontier/eslint-consistent"},"beautiful-imports":{"repository":"https://github.com/sergeyshpadyrev/eslint-plugin-beautiful-imports"},"beautiful-sort":{"repository":"https://github.com/Allohamora/eslint-plugin-beautiful-sort"},"benderthecrime":{"repository":"https://github.com/benderTheCrime/eslint-plugin-benderthecrime"},"bes":{"repository":"https://github.com/ykshang/eslint-custom-rule"},"bestpractice":{"repository":"https://github.com/strawlion/eslint-plugin-bestpractice"},"better-mutation":{"repository":"https://github.com/sloops77/eslint-plugin-better-mutation"},"better-styled-components":{"repository":"https://github.com/siffogh/eslint-plugin-better-styled-components"},"bitrefill":{"repository":"https://github.com/bitrefill/eslint-plugin-bitrefill"},"blank-line":{"repository":"https://github.com/xbdtb/eslint-plugin-blank-line"},"block-function-spacing":{"repository":"https://github.com/mgeraci/eslint-plugin-block-function-spacing"},"botland":{"repository":"https://github.com/freaktechnik/eslint-plugin-botland"},"boundaries":{"repository":"https://github.com/javierbrea/eslint-plugin-boundaries"},"boyscout":{"repository":"https://github.com/nicolaslt/eslint-plugin-boyscout"},"bpmn-io":{"repository":"https://github.com/bpmn-io/eslint-plugin-bpmn-io"},"brackets":{"repository":"https://github.com/kentor/eslint-plugin-brackets"},"bs-eslint-rules":{"repository":"https://github.com/Ticalie/bs-eslint"},"bud":{"repository":"https://github.com/samAroundGitHub/eslint-plugin-bud"},"budapestian":{"repository":"https://github.com/sverweij/dependency-cruiser"},"buildium":{"repository":"https://github.com/buildium/eslint-plugin-buildium"},"builtin-compat":{"repository":"https://github.com/instea/eslint-plugin-builtin-compat"},"caleb":{"repository":"https://github.com/calebeby/eslint-config"},"call-func-with-return":{"repository":"https://github.com/elvinn/eslint-plugin-call-func-with-return"},"callback":{"repository":"https://github.com/andreysm/eslint-plugin-callback"},"camelcase-ohm":{"repository":"https://github.com/ohmlang/eslint-plugin-camelcase-ohm"},"camunda-licensed":{"repository":"https://github.com/camunda/eslint-plugin-camunda-licensed"},"caniuse":{"repository":"https://github.com/amilajack/eslint-plugin-caniuse"},"capital-case":{"repository":"https://github.com/tcorley/eslint-plugin-capital-case"},"cdk":{"repository":"https://github.com/hupe1980/cdkdx"},"censor":{"repository":"https://github.com/pustovitDmytro/eslint-plugin-censor"},"cflint":{"repository":"https://github.com/cloudflare/eslint-plugin-cflint"},"chai-assert-bdd":{"repository":"https://github.com/t-huth/eslint-plugin-chai-assert-bdd"},"chai-asserts":{"repository":"https://github.com/orloffv/eslint-plugin-chai-asserts"},"chai-expect":{"repository":"https://github.com/turbo87/eslint-plugin-chai-expect"},"chai-expect-keywords":{"repository":"https://github.com/gavinaiken/eslint-plugin-chai-expect-keywords"},"chain":{"repository":"https://github.com/cenfun/eslint-plugin-chain"},"change-detection-strategy":{"repository":"https://github.com/num13ru/eslint-plugin-change-detection-strategy"},"chartjs":{"repository":"https://github.com/Manu1400/eslint-plugin-chartjs"},"check-class-name":{"repository":"https://github.com/SkyblueWZZQ/eslint-plugin-check-class-name"},"check-filenames":{"repository":"https://github.com/alfa-laboratory/eslint-plugin-check-filenames"},"chotot":{"repository":"https://github.com/chototoss/chotot-web-standards"},"chowa-standard":{"repository":"https://github.com/chowa/eslint-plugin-chowa-standard"},"ckeditor5-rules":{"repository":"https://github.com/ckeditor/eslint-plugin-ckeditor5-rules"},"ckhtml":{"repository":"https://github.com/BenoitZugmeyer/eslint-plugin-html"},"class-extends":{"repository":"https://github.com/wesbaker/eslint-plugin-class-extends"},"class-methods-use-this-regex":{"repository":"https://github.com/Donov4n/eslint-plugin-class-methods-use-this-regex"},"class-methods-use-this-regexp":{"repository":"https://github.com/teryaew/eslint-plugin-class-methods-use-this-regexp"},"class-prefer-methods":{"repository":"https://github.com/buildo/eslint-plugin-class-prefer-methods"},"class-types":{"repository":"https://github.com/fleck/eslint-plugin-class-types"},"clean-code":{"repository":"https://github.com/pksilen/eslint-plugin-clean-code"},"clean-regex":{"repository":"https://github.com/RunDevelopment/eslint-plugin-clean-regex"},"clean-timer":{"repository":"https://github.com/littlee/eslint-plugin-clean-timer"},"cleanjs":{"repository":"https://github.com/eslint-plugin-cleanjs/eslint-plugin-cleanjs"},"closure":{"repository":"https://github.com/google/eslint-closure"},"closure-library":{"repository":"https://github.com/koba04/eslint-plugin-closure-library"},"closuredepth":{"repository":"https://github.com/peteward44/eslint-plugin-closuredepth"},"clutter":{"repository":"https://github.com/43081j/notneeded"},"code-contracts":{"repository":"https://github.com/code-contracts/eslint-plugin-code-contracts"},"codebox":{"repository":"https://github.com/asn007/eslint-plugin-codebox"},"codebox-jh":{"repository":"https://github.com/judithhartmann/eslint-plugin-codebox"},"codeceptjs":{"repository":"https://github.com/poenneby/eslint-plugin-codeceptjs"},"codeceptjs2":{"repository":"https://github.com/APshenkin/eslint-plugin-codeceptjs"},"codegen":{"repository":"https://github.com/mmkal/ts"},"coffee-scope":{"repository":"https://github.com/apaleslimghost/eslint-plugin-coffee-scope"},"coffeescript":{"repository":"https://github.com/a-x-/eslint-plugin-coffeescript"},"coffeescript-es7":{"repository":"https://github.com/ovikholt/eslint-plugin-coffeescript"},"coherence":{"repository":"https://github.com/leonardodino/eslint-plugin-coherence"},"comment-annotations":{"repository":"https://github.com/102/eslint-plugin-comment-annotations"},"comment-reflow":{"repository":"https://github.com/jfroelich/eslint-plugin-comment-reflow"},"comments":{"repository":"https://github.com/lo1tuma/eslint-plugin-comments"},"commonjs":{"repository":"https://github.com/d-band/eslint-plugin-commonjs"},"commonjs-require-case":{"repository":"https://github.com/charlesbjohnson/eslint-module-plugins"},"commonjs-require-name":{"repository":"https://github.com/charlesbjohnson/eslint-module-plugins"},"communist-spelling":{"repository":"https://github.com/dprgarner/eslint-plugin-communist-spelling"},"community":{"repository":"https://github.com/tzellman/eslint-plugin-community"},"compat":{"docs":"https://github.com/amilajack/eslint-plugin-compat/blob/master/docs/rules/","repository":"https://github.com/amilajack/eslint-plugin-compat"},"compfest":{"repository":"https://github.com/COMPFEST/eslint-plugin-compfest"},"config-files":{"repository":"https://github.com/tyankatsu0105/eslint-plugin-config-files"},"consistent-modules-import":{"repository":"https://github.com/kiwi-code/eslint-plugin-consistent-import"},"consistent-return-legacy":{"repository":"https://github.com/erikdesjardins/eslint-plugin-consistent-return-legacy"},"consistent-subscribe":{"repository":"https://github.com/Gvozd/eslint-plugin-consistent-subscribe"},"const-case":{"repository":"https://github.com/k03mad/eslint-plugin-const-case"},"const-immutable":{"repository":"https://github.com/zeronone/eslint-plugin-const-immutable"},"contains":{"repository":"https://github.com/iambrandonn/eslint-plugin-contains"},"cookie-often":{"repository":"https://github.com/fortune-cook1e/eslint-plugin-cookie-often"},"core":{"repository":"https://github.com/Braised-Cakes/eslint-plugin-core"},"crb":{"repository":"https://github.com/chrisbreiding/eslint-plugin-crb"},"css-in-js":{"repository":"https://github.com/jackyho112/eslint-plugin-css-in-js"},"css-js":{"repository":"https://github.com/itsandrewsmith/eslint-plugin-css-js"},"css-modules":{"repository":"https://github.com/atfzl/eslint-plugin-css-modules"},"css-modules-amannn-fork":{"repository":"https://github.com/atfzl/eslint-plugin-css-modules"},"css-modules-mariosetenal":{"repository":"https://github.com/atfzl/eslint-plugin-css-modules"},"cssx":{"repository":"https://github.com/krasimir/eslint-plugin-cssx"},"cucumber":{"repository":"https://github.com/darrinholst/eslint-plugin-cucumber"},"curology":{"repository":"https://github.com/PocketDerm/eslint-plugin-curology"},"custom-jsx-props-order":{"repository":"https://github.com/fenbka/eslint-plugin-custom-jsx-props-order"},"custom-prettier":{"repository":"https://github.com/shaneu/eslint-plugin-custom-prettier"},"cwkr":{"repository":"https://github.com/cwkr/coding-guidelines"},"cx":{"repository":"https://github.com/artemdudkin/eslint-plugin-cx"},"cypress":{"docs":"https://github.com/cypress-io/eslint-plugin-cypress/blob/master/docs/rules/","repository":"https://github.com/cypress-io/eslint-plugin-cypress"},"cypress-dev":{"repository":"https://github.com/cypress-io/eslint-plugin-cypress-dev"},"cypress-parallelize":{"repository":"https://github.com/vtex/eslint-plugin-cypress-parallelize"},"cypress-test-best-practices":{"repository":"https://github.com/lewis-prescott-cruk/eslint-plugin-cypress-test-best-practices"},"dabapps":{"repository":"https://github.com/dabapps/eslint-plugin-dabapps"},"date":{"repository":"https://github.com/HeavenSky/eslint-plugin-date"},"date-timezone":{"repository":"https://github.com/msobas/eslint-plugin-date-timezone"},"declaration-quotes":{"repository":"https://github.com/k2ke/eslint-plugin-declaration-quotes"},"decorator-position":{"repository":"https://github.com/NullVoxPopuli/eslint-plugin-decorator-position"},"deku":{"repository":"https://github.com/deku-scrubs/eslint-plugin-deku"},"delegated-events":{"repository":"https://github.com/dgraham/eslint-plugin-delegated-events"},"deopt":{"repository":"https://github.com/Gvozd/eslint-plugin-deopt"},"deoxxa":{"repository":"https://github.com/deoxxa/eslint-plugin-deoxxa"},"dependencies":{"repository":"https://github.com/zertosh/eslint-plugin-dependencies"},"deprecate":{"repository":"https://github.com/AlexMost/eslint-plugin-deprecate"},"deprecated":{"repository":"https://github.com/ayqy/eslint-plugin-deprecated"},"deprecation":{"repository":"https://github.com/gund/eslint-plugin-deprecation"},"design-system":{"repository":"https://github.com/dslounge/eslint-plugin-design-system"},"destructuring":{"repository":"https://github.com/lukeapage/eslint-plugin-destructuring"},"destructuring-newline":{"repository":"https://github.com/kusotenpa/eslint-plugin-destructuring-newline"},"detect-bad-words":{"repository":"https://github.com/darwintantuco/eslint-plugin-detect-bad-words"},"detect-haiku":{"repository":"https://github.com/sadnessOjisan/eslint-plugin-detect-haiku"},"detect-hard-code":{"repository":"https://github.com/felipebruce/detect-hard-code"},"detect-headers-without-current-year":{"repository":"https://github.com/felipebruce/detect-headers-without-current-year"},"detect-no-assignment":{"repository":"https://github.com/felipebruce/detect-no-assignment"},"dfsx":{"repository":"https://github.com/dfsxdev/eslint-plugin-dfsx"},"dirnames":{"repository":"https://github.com/alfa-laboratory/eslint-plugin-dirnames"},"disable":{"repository":"https://github.com/mradionov/eslint-plugin-disable"},"disable-features":{"repository":"https://github.com/brendenpalmer/eslint-plugin-disable-features"},"disallow-literals-as-jsxelement-children":{"repository":"https://github.com/dominiczaq/eslint-plugin-disallow-literals-as-jsxelement-children"},"django":{"repository":"https://github.com/benspaulding/eslint-plugin-django"},"document-write":{"repository":"https://github.com/phanect/eslint-plugin-no-document-write"},"dollar-sign":{"repository":"https://github.com/erikdesjardins/eslint-plugin-dollar-sign"},"dom":{"repository":"https://github.com/amilajack/eslint-plugin-dom"},"double-semi":{"repository":"https://github.com/flet/eslint-plugin-double-semi"},"dprint":{"repository":"https://github.com/mysticatea/eslint-plugin-dprint"},"drupal-contrib":{"repository":"https://github.com/coldfrontlabs/eslint-plugin-drupal-contrib"},"dtslint":{"repository":"https://github.com/cartant/eslint-plugin-dtslint"},"duck":{"repository":"https://github.com/enkidevs/eslint-plugin-duck"},"easy-loops":{"repository":"https://github.com/bennypowers/eslint-plugin-easy-loops"},"ebdd":{"repository":"https://github.com/fasttime/eslint-plugin-ebdd"},"ecmascript-compat":{"repository":"https://github.com/robatwilliams/es-compat"},"editorconfig":{"repository":"https://github.com/phanect/eslint-plugin-editorconfig"},"eggache":{"repository":"https://github.com/eggjs/eslint-plugin-eggache"},"ekimlinger":{"repository":"https://github.com/ekimlinger/eslint-plugin-ekimlinger"},"elrond-childapp-bound":{"repository":"https://github.com/abeet/eslint-plugin-elrond-childapp-bound"},"email-css-rules":{"repository":"https://github.com/taskworld/eslint-plugin-email-css-rules"},"ember":{"docs":"https://github.com/ember-cli/eslint-plugin-ember/blob/master/docs/rules/","repository":"https://github.com/ember-cli/eslint-plugin-ember"},"ember-best-practices":{"repository":"https://github.com/ember-best-practices/eslint-plugin-ember-best-practices"},"ember-cleanup":{"repository":"https://github.com/onechiporenko/eslint-plugin-ember-cleanup"},"ember-data":{"repository":"https://github.com/npm/security-holder"},"emmanuel":{"repository":"https://github.com/Manu1400/eslint-plugin-emmanuel"},"emotion-utils":{"repository":"https://github.com/danielhusar/eslint-plugin-emotion-utils"},"empty-returns":{"repository":"https://github.com/aero31aero/eslint-plugin-empty-returns"},"enact":{"repository":"https://github.com/enactjs/eslint-plugin-enact"},"enzyme":{"repository":"https://github.com/giamir/eslint-plugin-enzyme"},"es-beautifier":{"repository":"https://github.com/dai-shi/es-beautifier"},"es5":{"repository":"https://github.com/nkt/eslint-plugin-es5"},"es6":{"repository":"https://github.com/nadongguri/eslint-plugin-es6"},"es6-recommended":{"repository":"https://github.com/mgtitimoli/eslint-plugin-es6-recommended"},"escompat":{"repository":"https://github.com/keithamus/eslint-plugin-escompat"},"eslint-comments":{"docs":"https://github.com/mysticatea/eslint-plugin-eslint-comments/blob/master/docs/rules/","repository":"https://github.com/mysticatea/eslint-plugin-eslint-comments"},"eslint-config":{"repository":"https://github.com/g-rath/eslint-plugin-eslint-config"},"eslint-vertical-import":{"repository":"https://github.com/eydrian/eslint-vertical-import"},"esquery":{"repository":"https://github.com/suchipi/eslint-plugin-esquery"},"etiqa":{"repository":"https://github.com/Etiqa/eslint-plugin-etiqa"},"evelyn":{"repository":"https://github.com/evelynhathaway/eslint-plugin-evelyn"},"event-listener":{"repository":"https://github.com/SinLucifer/eslint-plugin-event-listeners"},"exclude-php-tags":{"repository":"https://github.com/Alexnder/eslint-plugin-exclude-php-tags"},"expect-type":{"repository":"https://github.com/ibezkrovnyi/eslint-plugin-expect-type"},"expires":{"repository":"https://github.com/digencer/eslint-plugin-expires"},"exports-order":{"repository":"https://github.com/simonprod/eslint-plugin-exports-order"},"ext":{"repository":"https://github.com/jiangfengming/eslint-plugin-ext"},"extend":{"repository":"https://github.com/bregenspan/eslint-plugin-extend"},"extended":{"repository":"https://github.com/thenativeweb/eslint-plugin-extended"},"extjs":{"repository":"https://github.com/burnnat/eslint-plugin-extjs"},"extra-syntax":{"repository":"https://github.com/th317erd/eslint-plugin-extra-syntax"},"faltest":{"repository":"https://github.com/CrowdStrike/faltest"},"fastify-security-rules":{"repository":"https://github.com/lirantal/eslint-plugin-security"},"fb-www":{"repository":"https://github.com/aaronabramov/eslint-plugin-fb-www"},"fbi":{"repository":"https://github.com/fbi-js/eslint-plugin-fbi"},"fda":{"repository":"https://github.com/meetromb/eslint-plugin-fda"},"fest":{"repository":"https://github.com/Angmor23/eslint-plugin-fest"},"fetch-options":{"repository":"https://github.com/piatra/eslint-plugin-fetch"},"file-banner":{"repository":"https://github.com/screamy/eslint-plugin-file-banner"},"file-header":{"repository":"https://github.com/Sekhmet/eslint-plugin-file-header"},"file-layout":{"repository":"https://github.com/keik/eslint-plugin-file-layout"},"file-progress":{"repository":"https://github.com/sibiraj-s/eslint-plugin-file-progress"},"filename":{"repository":"https://github.com/benyasin/eslint-plugin-filename"},"filename-rules":{"repository":"https://github.com/dolsem/eslint-plugin-filename-rules"},"filenames-simple":{"repository":"https://github.com/epaew/eslint-plugin-filenames-simple"},"filenames-suffix":{"repository":"https://github.com/mmiller42/eslint-plugin-filenames"},"fix-deps":{"repository":"https://github.com/mitchellhamilton/eslint-plugin-fix-deps"},"flow":{"repository":"https://github.com/gajus/eslint-plugin-flowtype"},"flow-check":{"repository":"https://github.com/marionebl/eslint-plugin-flow-check"},"flow-header":{"repository":"https://github.com/eirikurn/eslint-plugin-flow-header"},"flow-missing":{"repository":"https://github.com/alburkerk/eslint-plugin-flow-missing"},"flow-typed":{"repository":"https://github.com/marudor/eslint-plugin-flow-typed"},"flowspace-es5":{"repository":"https://github.com/Flowspace-Team/eslint-plugin-es5"},"flowtype":{"repository":"https://github.com/gajus/eslint-plugin-flowtype"},"flowtype-errors":{"repository":"https://github.com/amilajack/eslint-plugin-flowtype-errors"},"flowtype-esm":{"repository":"https://github.com/ganesankv/eslint-plugin-flowtype"},"flux-standard-actions":{"repository":"https://github.com/aosyatnik/eslint-plugin-flux-standard-actions"},"fly":{"repository":"https://github.com/Hzy0913/eslint-plugin-fly"},"folders":{"repository":"https://github.com/christopherbradleybanks/eslint-plugin-folders"},"for-wtools":{"repository":"https://github.com/Wandalen/EslintPluginForWtools"},"forbidden-package":{"repository":"https://github.com/Krosantos/eslint-plugin-forbidden-package"},"force-void":{"repository":"https://github.com/pat841/eslint-plugin-force-void"},"format-message":{"repository":"https://github.com/format-message/format-message"},"formatjs":{"repository":"https://github.com/formatjs/formatjs"},"formatting":{"repository":"https://github.com/dugokontov/eslint-plugin-formatting"},"fp-jxl":{"repository":"https://github.com/jesterxl/eslint-plugin-fp-jxl"},"fp-ts":{"repository":"https://github.com/buildo/eslint-plugin-fp-ts"},"fpcs":{"repository":"https://github.com/flowerpress/eslint-plugin-fpcs"},"front-require-in-package":{"repository":"https://github.com/frontapp/eslint-plugin-require-in-package"},"frontend":{"repository":"https://github.com/obartra/eslint-plugin-frontend"},"fsa":{"repository":"https://github.com/joseph-galindo/eslint-plugin-fsa"},"ftgp":{"repository":"https://github.com/foretagsplatsen/ftgp-eslint"},"full-import":{"repository":"https://github.com/mdebbar/eslint-plugin-full-import"},"fullfilename":{"repository":"https://github.com/litelite/eslint-plugin-fullfilename"},"func-call":{"repository":"https://github.com/titarenko/eslint-plugin-func-call"},"func-params-args":{"repository":"https://github.com/abdusabri/eslint-plugin-func-params-args"},"function-call-context":{"repository":"https://github.com/Glinkis/eslint-plugin-function-call-context"},"function-name":{"repository":"https://github.com/legend80s/eslint-plugin-function-name"},"function-return-assigned-name":{"repository":"https://github.com/Jephuff/eslint-plugin-function-return-assigned-name"},"functional":{"docs":"https://github.com/jonaskello/eslint-plugin-functional/blob/master/docs/rules/","repository":"https://github.com/jonaskello/eslint-plugin-functional"},"fuse-box-eslint-plugin":{"repository":"https://github.com/DoumanAsh/fuse-box-eslint-plugin"},"fxa":{"repository":"https://github.com/mozilla/eslint-plugin-fxa"},"galaxy":{"repository":"https://github.com/CyanSalt/eslint-plugin-galaxy"},"gatsby":{"repository":"https://github.com/SSouik/eslint-plugin-gatsby"},"gatsby-no-static-queries":{"docs":"https://github.com/larowlan/eslint-plugin-gatsby-no-static-queries/blob/master/docs/rules/","repository":"https://github.com/larowlan/eslint-plugin-gatsby-no-static-queries"},"geekie":{"repository":"https://github.com/geekie/eslint-plugin"},"geojson":{"repository":"https://github.com/arlyn-bones/eslint-plugin-json"},"gerhut":{"repository":"https://github.com/Gerhut/eslint-plugin-gerhut"},"getsentry":{"repository":"https://github.com/getsentry/eslint-plugin-getsentry"},"getsize":{"repository":"https://github.com/timqha/eslint-plugin-getsize"},"ghost":{"repository":"https://github.com/TryGhost/eslint-plugin-ghost"},"git":{"repository":"https://github.com/benmosher/eslint-plugin-git"},"github":{"repository":"https://github.com/github/eslint-plugin-github"},"glip":{"repository":"https://github.com/brettpaden/eslint-plugin-glip"},"glob-in-npm-script":{"repository":"https://github.com/m-sureshraj/eslint-plugin-glob-in-npm-script"},"gm":{"repository":"https://github.com/gmfe/eslint-plugin-gm"},"gm-react-app":{"repository":"https://github.com/gmfe/gm-react-app"},"gmfe":{"repository":"https://github.com/gmfe/eslint-plugin-gmfe"},"good-practices":{"repository":"https://github.com/Rahul9046/eslint-plugin-good-practices"},"google-camelcase":{"repository":"https://github.com/greggman/eslint-plugin-google-camelcase"},"googleappsscript":{"repository":"https://github.com/selectnull/eslint-plugin-googleappsscript"},"googshift":{"repository":"https://github.com/gberaudo/eslint-plugin-googshift"},"grapes":{"repository":"https://github.com/Krosantos/eslint-plugin-grapes"},"graphql":{"repository":"https://github.com/apollostack/eslint-plugin-graphql"},"graphql-schema":{"repository":"https://github.com/joshuaNathaniel/eslint-plugin-graphql-schema"},"gridsome":{"repository":"https://github.com/gridsome/eslint-plugin-gridsome"},"grouped-imports":{"repository":"https://github.com/gohabereg/eslint-plugin-grouped-imports"},"hammerhead":{"repository":"https://github.com/LavrovArtem/eslint-plugin-hammerhead"},"haraka":{"repository":"https://github.com/haraka/haraka-eslint"},"hash-exempt":{"repository":"https://github.com/ckarper/eslint-plugin-hash-exempt"},"hbs":{"repository":"https://github.com/psbanka/eslint-plugin-hbs"},"header":{"repository":"https://github.com/Stuk/eslint-plugin-header"},"healthier":{"repository":"https://github.com/KidkArolis/eslint-plugin-healthier"},"helix-structure":{"repository":"https://github.com/jeppeskovsen/eslint-plugin-helix-structure"},"hijup":{"repository":"https://github.com/hijup/eslint-plugin-hijup"},"homer0":{"repository":"https://github.com/homer0/eslint-plugin-homer0"},"hook-break-line":{"repository":"https://github.com/meerkat-morecats/eslint-plugin-hook-break-line"},"hooks":{"repository":"https://github.com/hiukky/eslint-plugin-hooks"},"html":{"repository":"https://github.com/BenoitZugmeyer/eslint-plugin-html"},"html-erb":{"repository":"https://github.com/pmrotule/eslint-plugin-html-erb"},"i-bem-js":{"repository":"https://github.com/Realetive/eslint-plugin-i-bem-js"},"i18n":{"docs":"https://github.com/chejen/eslint-plugin-i18n/blob/master/docs/rules/","repository":"https://github.com/chejen/eslint-plugin-i18n"},"i18n-json":{"repository":"https://github.com/godaddy/eslint-plugin-i18n-json"},"i18n-text":{"repository":"https://github.com/dgraham/eslint-plugin-i18n-text"},"i18n-text-localize":{"repository":"https://github.com/dgraham/eslint-plugin-i18n-text"},"i18n-validator":{"repository":"https://github.com/OvalMoney/eslint-plugin-i18n-validator"},"i18next":{"docs":"https://github.com/edvardchen/eslint-plugin-i18next/blob/master/docs/rules/","repository":"https://github.com/edvardchen/eslint-plugin-i18next"},"i18nlint":{"repository":"https://github.com/B1gF4ceC4t/eslint-plugin-i18nlint"},"icon-button":{"repository":"https://github.com/SmallImprovements-OpenSource/eslint-plugin-icon-button"},"ideal":{"repository":"https://github.com/gyandeeps/eslint-plugin-ideal"},"idiomatic-jsx":{"repository":"https://github.com/danrigsby/eslint-plugin-idiomatic-jsx"},"idiomatic-jsx-u":{"repository":"https://github.com/Jgaona/eslint-plugin-idiomatic-jsx"},"ie-jsapi":{"repository":"https://github.com/rainAgain/eslint-plugin-ie-jsapi"},"ie-static-methods":{"repository":"https://github.com/rfeie/eslint-plugin-ie-static-methods"},"ie11":{"repository":"https://github.com/Volox/eslint-plugin-ie11"},"if-in-test":{"repository":"https://github.com/shokai/eslint-plugin-if-in-test"},"ignore-erb":{"repository":"https://github.com/ryanere/eslint-plugin-ignore-erb"},"ignore-generated":{"repository":"https://github.com/zertosh/eslint-plugin-ignore-generated"},"ignore-generated-and-nolint":{"repository":"https://github.com/zertosh/eslint-plugin-ignore-generated-and-nolint"},"ignore-native-decl":{"repository":"https://github.com/darahak/eslint-plugin-ignore-native-decl"},"immer":{"repository":"https://github.com/supremebeing7/eslint-plugin-immer"},"immer-reducer":{"repository":"https://github.com/skoshy/eslint-plugin-immer-reducer"},"immutable":{"repository":"https://github.com/jhusain/eslint-plugin-immutable"},"immutable-js":{"repository":"https://github.com/dingbat/eslint-plugin-immutable-js"},"immutablefork":{"repository":"https://github.com/raphaelbadia/eslint-plugin-immutable"},"imperative":{"repository":"https://github.com/guidesmiths/eslint-plugin-imperative"},"implicit-dependencies":{"repository":"https://github.com/lennym/eslint-plugin-implicit-dependencies"},"import":{"docs":"https://github.com/benmosher/eslint-plugin-import/blob/master/docs/rules/","repository":"https://github.com/benmosher/eslint-plugin-import"},"import-1nd":{"repository":"https://github.com/benmosher/eslint-plugin-import"},"import-alias":{"repository":"https://github.com/steelsojka/eslint-import-alias"},"import-force-abbr":{"repository":"https://github.com/deser/eslint-plugin-import-force-abbr"},"import-helpers":{"repository":"https://github.com/Tibfib/eslint-plugin-import-helpers"},"import-length":{"repository":"https://github.com/steelsojka/eslint-import-length"},"import-monorepo":{"repository":"https://github.com/igogo5yo/eslint-plugin-import-monorepo"},"import-name":{"repository":"https://github.com/R1ON/eslint-plugin-import-name"},"import-newlines":{"repository":"https://github.com/SeinopSys/eslint-plugin-import-newlines"},"import-order-aesthetic":{"repository":"https://github.com/Recidvst/eslint-plugin-import-order-aesthetic"},"import-order-all":{"repository":"https://github.com/electrovir/eslint-plugin-import-order-all"},"import-order-alphabetical":{"repository":"https://github.com/janpaul123/eslint-plugin-import-order-alphabetical"},"import-order-autofix":{"repository":"https://github.com/AlexJuarez/eslint-plugin-import-order-autofix"},"import-order-autosorter":{"repository":"https://github.com/AlexJuarez/eslint-plugin-import-order-autofix"},"import-order-emotion":{"repository":"https://github.com/jfrej/eslint-plugin-import-order-emotion"},"import-path":{"repository":"https://github.com/andrienko/eslint-plugin-import-path"},"import-quotes":{"repository":"https://github.com/xneek/eslint-plugin-import-quotes"},"import-restrictions":{"repository":"https://github.com/sfrieson/eslint-plugin-import-restrictions"},"import-root":{"repository":"https://github.com/freckstergit/eslint-plugin-import-root"},"import-sorter":{"repository":"https://github.com/fengkfengk/eslint-plugin-import-sorter"},"import-splitnsort":{"repository":"https://github.com/mflorence99/eslint-plugin-import-splitnsort"},"import-userlike":{"repository":"https://github.com/anilanar/eslint-plugin-import-userlike"},"impress":{"repository":"https://github.com/aqrln/eslint-plugin-impress"},"inclusive":{"repository":"https://github.com/shibulijack/eslint-plugin-inclusive"},"inclusive-language":{"repository":"https://github.com/muenzpraeger/eslint-plugin-inclusive-language"},"indent-class-properties":{"repository":"https://github.com/larsmunkholm/eslint-plugin-indent-class-properties"},"indent-empty-lines":{"repository":"https://github.com/funmaker/eslint-plugin-indent-empty-lines"},"infermedica":{"repository":"https://github.com/infermedica/eslint-plugin-infermedica"},"inlinecheck":{"repository":"https://github.com/aravindsrivats/eslint-plugin-inlinecheck"},"instructure-ui":{"repository":"https://github.com/instructure/instructure-ui"},"interfaced":{"repository":"https://github.com/interfaced/eslint-plugin-interfaced"},"irm":{"repository":"https://github.com/hadeshe93/eslint-plugin-irm"},"iruhl":{"repository":"https://github.com/LeadingLight/eslint-plugin-iruhl"},"isotropic":{"repository":"https://github.com/ibi-group/eslint-plugin-isotropic"},"istanbul":{"repository":"https://github.com/istanbuljs/eslint-plugin-istanbul"},"itgalaxy":{"repository":"https://github.com/itgalaxy/eslint-plugin-itgalaxy"},"ja":{"repository":"https://github.com/mysticatea/eslint-plugin-ja"},"jacobsmith-custom":{"repository":"https://github.com/jacobsmith/jacobsmith-eslint-plugins"},"jam3":{"repository":"https://github.com/Jam3/eslint-plugin-jam3"},"jane":{"repository":"https://github.com/jane/eslint-plugin-jane"},"jd":{"repository":"https://github.com/gkxie/eslint-plugin-jd"},"jest":{"docs":"https://github.com/jest-community/eslint-plugin-jest/blob/master/docs/rules/","repository":"https://github.com/jest-community/eslint-plugin-jest"},"jest-dom":{"docs":"https://github.com/testing-library/eslint-plugin-jest-dom/blob/master/docs/rules/","repository":"https://github.com/testing-library/eslint-plugin-jest-dom"},"jest-extended":{"repository":"https://github.com/mattphillips/eslint-plugin-jest-extended"},"jest-formatting":{"docs":"https://github.com/dangreenisrael/eslint-plugin-jest-formatting/blob/master/docs/rules/","repository":"https://github.com/dangreenisrael/eslint-plugin-jest-formatting"},"jest-playwright":{"repository":"https://github.com/mxschmitt/eslint-plugin-jest-playwright"},"jest-react":{"repository":"https://github.com/Codecademy/eslint-plugin-jest-react"},"jestx":{"repository":"https://github.com/benmonro/eslint-plugin-jest"},"jinja":{"repository":"https://github.com/alexkuz/eslint-plugin-jinja"},"jinja2":{"repository":"https://github.com/alexkuz/eslint-plugin-jinja"},"jira-ticket-todos":{"repository":"https://github.com/Adam-Schlichtmann/jira-ticket-todos"},"jmacs":{"repository":"https://github.com/blake-regalia/jmacs.js"},"joyent":{"repository":"https://github.com/joyent/node-eslint-plugin-joyent"},"jquery":{"repository":"https://github.com/dgraham/eslint-plugin-jquery"},"jquery-selectors":{"repository":"https://github.com/rardoz/eslint-plugin-jquery-selectors"},"jquery-unsafe":{"repository":"https://github.com/cdd/eslint-plugin-jquery-unsafe"},"jsbox":{"repository":"https://github.com/EqualMa/eslint-plugin-jsbox"},"jsdoc":{"repository":"https://github.com/gajus/eslint-plugin-jsdoc"},"jsfix":{"repository":"https://github.com/Digyter/eslint-plugin-jsfix"},"jsig":{"repository":"https://github.com/raynos/eslint-plugin-jsig"},"json":{"repository":"https://github.com/azeemba/eslint-plugin-json"},"json-beta":{"repository":"https://github.com/azeemba/eslint-plugin-json"},"json-es":{"repository":"https://github.com/zeitport/eslint-plugin-json-es"},"json-files":{"repository":"https://github.com/kellyselden/eslint-plugin-json-files"},"json-format":{"repository":"https://github.com/bkucera/eslint-plugin-json-format"},"json-lite":{"repository":"https://github.com/jacob-israel-turner/eslint-plugin-json-lite"},"json-processor":{"repository":"https://github.com/doochik/eslint-plugin-json-processor"},"json-schema-validator":{"docs":"https://github.com/ota-meshi/eslint-plugin-json-schema-validator/blob/master/docs/rules/","repository":"https://github.com/ota-meshi/eslint-plugin-json-schema-validator"},"json5":{"repository":"https://github.com/bayesimpact/eslint-plugin-json5"},"jsonc":{"repository":"https://github.com/ota-meshi/eslint-plugin-jsonc"},"jsp":{"repository":"https://github.com/haroldputman/eslint-plugin-jsp"},"jsspec":{"repository":"https://github.com/JSSpec/eslint-plugin-jsspec"},"jsx-a11y":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-eight":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-eighteen":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-eleven":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fifteen":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftyeight":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftyfive":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftynine":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftyone":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftyseven":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftysix":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftythree":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fiftytwo":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-five":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-four":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourteen":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourty":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtyeight":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtyfive":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtyfour":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtynine":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtyone":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtyseven":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtysix":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtythree":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-fourtytwo":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-nine":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-nineteen":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-seven":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-seventeen":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-seventy":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-seventyone":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-six":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixteen":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixty":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtyfive":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtyfour":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtynine":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtyone":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtyseven":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtysix":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtythree":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-sixtytwo":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-ten":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirteen":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirty":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtyeight":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtyfive":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtyfour":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtynine":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtyone":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtyseven":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtysix":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtythree":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-thirtytwo":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-three":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twelve":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twenty":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentyeight":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentyfive":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentyfour":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentynine":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentyone":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentyseven":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentysix":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentythree":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-twentytwo":{"repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-a11y-div-two":{"docs":"https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/master/docs/rules/","repository":"https://github.com/evcohen/eslint-plugin-jsx-a11y"},"jsx-advanced":{"repository":"https://github.com/fengxinming/babel-plugins"},"jsx-control-statements":{"repository":"https://github.com/vkbansal/eslint-plugin-jsx-control-statements"},"jsx-dollar":{"repository":"https://github.com/kyoncy/eslint-plugin-jsx-dollar"},"jsx-extras":{"repository":"https://github.com/nmn/eslint-plugin-jsx-extras"},"jsx-falsy":{"repository":"https://github.com/jeremy-deutsch/eslint-plugin-jsx-falsy"},"jsx-img-no-referrer":{"repository":"https://github.com/darwintantuco/eslint-plugin-jsx-img-no-referrer"},"kengoldfarb":{"repository":"https://github.com/kengoldfarb/lint"},"kiwicom":{"repository":"https://github.com/kiwicom/eslint-plugin-kiwicom"},"knex":{"repository":"https://github.com/antonniklasson/eslint-plugin-knex"},"known-imports":{"repository":"https://github.com/helixbass/eslint-plugin-known-imports"},"koot":{"repository":"https://github.com/cmux/koot-eslint"},"korolint":{"repository":"https://github.com/OBKoro1/eslint-plugin-koro-create"},"kyt":{"repository":"https://github.com/nytimes/kyt"},"lab":{"repository":"https://github.com/rankida/eslint-plugin-lab"},"lambda-calculus":{"repository":"https://github.com/david-davidson/eslint-plugin-lambda-calculus"},"langs":{"repository":"https://github.com/infodusha/eslint-plugin-langs"},"lcb-mini":{"repository":"https://github.com/douzi8/eslint-plugin-lcb-mini"},"lcom":{"repository":"https://github.com/FujiHaruka/eslint-plugin-lcom"},"lean-imports":{"repository":"https://github.com/eslint-plugins/eslint-plugin-lean-imports"},"leboncoin":{"repository":"https://github.com/leboncoin/frontend-web-tools"},"leon-require-jsdoc":{"repository":"https://github.com/JonatronLeon/eslint-plugin-leon-require-jsdoc"},"letemplate":{"repository":"https://github.com/vuejs/eslint-plugin-vue"},"levitate":{"repository":"https://github.com/ThisIsManta/eslint-plugin-levitate"},"license-header":{"repository":"https://github.com/nikku/eslint-plugin-license-header"},"link-slash-end":{"repository":"https://github.com/HaganHan/eslint-plugin-link-slash-end"},"linklink":{"repository":"https://github.com/Java-http/eslint-plugin-linklink"},"lint":{"repository":"https://github.com/zertosh/eslint-plugin-lint"},"lint-md":{"repository":"https://github.com/lint-md/eslint-plugin-lint-md"},"lit":{"repository":"https://github.com/43081j/eslint-plugin-lit"},"lit-a11y":{"docs":"https://github.com/open-wc/open-wc/blob/master/packages/eslint-plugin-lit-a11y/docs/rules/","repository":"https://github.com/open-wc/open-wc"},"literal-blacklist":{"repository":"https://github.com/kyaido/eslint-plugin-literal-blacklist"},"literal-check":{"repository":"https://github.com/youngjuning/eslint-plugin-literal-check"},"literate":{"repository":"https://github.com/wprl/eslint-plugin-literate"},"lob":{"repository":"https://github.com/lob/eslint-plugin-lob"},"local":{"repository":"https://github.com/taskworld/eslint-plugin-local"},"local-rules":{"repository":"https://github.com/cletusw/eslint-plugin-local-rules"},"lodash":{"docs":"https://github.com/wix/eslint-plugin-lodash/blob/master/docs/rules/","repository":"https://github.com/wix/eslint-plugin-lodash"},"lodash-magic-import":{"repository":"https://github.com/bitsnap/eslint-plugin-lodash-magic-import"},"lodash-restrictions":{"repository":"https://github.com/idesi/eslint-plugin-lodash-restrictions"},"lodash-template":{"repository":"https://github.com/ota-meshi/eslint-plugin-lodash-template"},"lodash-tree-shakeable-import":{"repository":"https://github.com/natterstefan/eslint-plugin-lodash-tree-shakeable-import"},"loft":{"repository":"https://github.com/Loft-Brasil/eslint-plugin-loft"},"log":{"repository":"https://github.com/omrilotan/eslint-plugin-log"},"log-filenames":{"repository":"https://github.com/justlep/eslint-plugin-log-filenames"},"log-linter":{"repository":"https://github.com/michael5891/eslint-plugin-log-linter"},"logdna":{"repository":"https://github.com/logdna/eslint-plugin-logdna"},"lola":{"repository":"https://github.com/lolatravel/eslint-plugin-lola"},"loosely-restrict-imports":{"repository":"https://github.com/mattgoucher/eslint-plugin-loosely-restrict-imports"},"loyaltylion":{"repository":"https://github.com/loyaltylion/eslint-plugin-loyaltylion"},"lw":{"repository":"https://github.com/laurelandwolf/eslint-plugin-lw"},"lwc":{"repository":"https://github.com/npm/security-holder"},"lwintch-wyze":{"docs":"https://github.com/lwintch/eslint-plugin-wyze/blob/master/docs/rules/","repository":"https://github.com/lwintch/eslint-plugin-wyze"},"m99coder":{"repository":"https://github.com/m99coder/eslint-plugin-m99coder"},"magicdawn":{"repository":"https://github.com/magicdawn/eslint-plugin-magicdawn"},"makestyles":{"repository":"https://github.com/madflanderz/eslint-plugin-makestyles"},"markdown":{"repository":"https://github.com/eslint/eslint-plugin-markdown"},"markdown-antd":{"repository":"https://github.com/eslint/eslint-plugin-markdown"},"markdown-runkit":{"repository":"https://github.com/eslint/eslint-plugin-markdown"},"markup-replace":{"repository":"https://github.com/xsjohn0306/eslint-plugin-markup-replace"},"maru":{"repository":"https://github.com/jshan2017/eslint-plugin-maru"},"material-ui-dkadrios":{"repository":"https://github.com/mui-org/material-ui"},"material-ui-unused-classes":{"repository":"https://github.com/jens-ox/eslint-plugin-material-ui-unused-classes"},"max-comments-per-function":{"repository":"https://github.com/miangraham/eslint-plugin-max-comments-per-function"},"max-len-2":{"repository":"https://github.com/andreineculau/eslint-plugin-max-len-2"},"max-params-no-constructor":{"repository":"https://github.com/paulomenezes/max-params-no-constructor"},"mayaka":{"repository":"https://github.com/g-plane/eslint-plugin-mayaka"},"md":{"repository":"https://github.com/leo-buneev/eslint-plugin-md"},"mdx":{"repository":"https://github.com/mdx-js/eslint-mdx"},"mdx-patch":{"repository":"https://github.com/ianlet/eslint-plugin-mdx-patch"},"mediawiki":{"repository":"https://github.com/wikimedia/eslint-plugin-mediawiki"},"metafizzy":{"repository":"https://github.com/metafizzy/eslint-plugin-metafizzy"},"meteor":{"docs":"https://github.com/dferber90/eslint-plugin-meteor/blob/master/docs/rules/","repository":"https://github.com/dferber90/eslint-plugin-meteor"},"miniprogram":{"repository":"https://github.com/airbnb/eslint-plugin-miniprogram"},"minxing":{"repository":"https://github.com/stuartZhang/eslint-plugin-minxing"},"mirego":{"repository":"https://github.com/mirego/eslint-plugin-mirego"},"mishguru":{"docs":"https://github.com/mishguruorg/eslint-plugin-mishguru/blob/master/docs/rules/","repository":"https://github.com/mishguruorg/eslint-plugin-mishguru"},"mix-lang":{"repository":"https://github.com/Jogyly/mix-lang"},"mizyind":{"repository":"https://github.com/miZyind/eslint-plugin-mizyind"},"mobx-computed-getters":{"repository":"https://github.com/kubk/eslint-plugin-mobx-computed-getters"},"mocha":{"docs":"https://github.com/lo1tuma/eslint-plugin-mocha/blob/master/docs/rules/","repository":"https://github.com/lo1tuma/eslint-plugin-mocha"},"mocha-cleanup":{"repository":"https://github.com/onechiporenko/eslint-plugin-mocha-cleanup"},"mocha-no-only":{"repository":"https://github.com/lewazo/eslint-mocha-no-only"},"module":{"repository":"https://github.com/raxjs/rax-scripts"},"module-resolver":{"repository":"https://github.com/HeroProtagonist/eslint-plugin-module-resolver"},"modules-newline":{"repository":"https://github.com/gmsorrow/eslint-plugin-modules-newline"},"modules-newline-fixed":{"repository":"https://github.com/CyberWalrus/eslint-plugin-modules-newline"},"moment-timezone":{"repository":"https://github.com/hollandmatt/eslint-plugin-moment-timezone"},"moment-utc":{"repository":"https://github.com/wunderflats/eslint-plugin-moment-utc"},"momentjs":{"repository":"https://github.com/schnaser/eslint-plugin-momentjs"},"mongo":{"repository":"https://github.com/ispringer/eslint-plugin-mongo"},"mongodb":{"repository":"https://github.com/nfroidure/eslint-plugin-mongodb"},"mongodb-server":{"repository":"https://github.com/visemet/eslint-plugin-mongodb-server"},"monorepo":{"repository":"https://github.com/azz/eslint-plugin-monorepo"},"monorepo-cop":{"repository":"https://github.com/sterlingwes/eslint-plugin-monorepo-cop"},"more-naming-conventions":{"repository":"https://github.com/TheKoopaKingdom/eslint-plugin-more-naming-conventions"},"more-naming-conventions-leading-underscore":{"repository":"https://github.com/alex-zissis/eslint-plugin-more-naming-conventions"},"move-files":{"repository":"https://github.com/JamieMason/eslint-plugin-move-files"},"moxio":{"repository":"https://github.com/Moxio/eslint-plugin-moxio"},"mpirik":{"repository":"https://github.com/mpirik/eslint-plugin-mpirik"},"mpx":{"repository":"https://github.com/pagnkelly/eslint-plugin-mpx"},"msc":{"repository":"https://github.com/KIKIWU/eslint-plugin-msc"},"mui-unused-classes":{"repository":"https://github.com/jens-ox/eslint-plugin-material-ui-unused-classes"},"muralco":{"repository":"https://github.com/muralco/eslint-plugin-muralco"},"muriki":{"repository":"https://github.com/Moeriki/eslint-plugin-muriki"},"must-use-await":{"repository":"https://github.com/mikemaccana/eslint-plugin-must-use-await"},"named-unassigned-functions":{"repository":"https://github.com/ValYouW/eslint-plugin-named-unassigned-functions"},"native-over-lodash":{"repository":"https://github.com/Coobaha/eslint-plugin-native-over-lodash"},"nebulas-contract":{"repository":"https://github.com/xingyunwork/eslint-plugin-nebulas-contract"},"nested":{"repository":"https://github.com/fengzilong/eslint-plugin-nested"},"nestjs":{"repository":"https://github.com/unlight/eslint-plugin-nestjs"},"neverblued":{"repository":"https://github.com/neverblued/eslint-plugin-neverblued"},"new-line-before-if":{"repository":"https://github.com/nisshii0313/eslint-plugin-new-line-before-if"},"new-with-error":{"repository":"https://github.com/Trott/eslint-plugin-new-with-error"},"newline-after-if-condition":{"repository":"https://github.com/marcosc90/eslint-plugin-newline-after-if-condition"},"newline-before-func":{"repository":"https://github.com/florian-richter/eslint-plugin-newline-before-func"},"newline-before-paren":{"repository":"https://github.com/pat841/eslint-plugin-newline-before-paren"},"newline-destructuring":{"repository":"https://github.com/urielvan/eslint-plugin-newline-destructuring"},"ng-extra":{"repository":"https://github.com/oss6/eslint-plugin-ng-extra"},"ngrx":{"repository":"https://github.com/timdeschryver/eslint-plugin-ngrx"},"ngxs-style-guide":{"repository":"https://github.com/unlight/eslint-plugin-ngxs-style-guide"},"nkgrnkgr-react":{"repository":"https://github.com/nkgrnkgr/eslint-plugin-nkgrnkgr-react"},"nnimetz":{"repository":"https://github.com/NicolasNimetz/eslint-plugin-nnimetz"},"no-allow-react-context":{"repository":"https://github.com/azu/eslint-plugin-no-allow-react-context"},"no-ambiguous":{"repository":"https://github.com/eight04/eslint-plugin-no-ambiguous"},"no-arrow-labels":{"repository":"https://github.com/bryanrsmith/eslint-plugin-no-arrow-labels"},"no-arrow-this":{"repository":"https://github.com/wentout/eslint-plugin-no-arrow-this"},"no-async":{"repository":"https://github.com/yoavniran/eslint-plugin-no-async"},"no-async-without-await":{"repository":"https://github.com/zertosh/eslint-plugin-no-async-without-await"},"no-autofix":{"repository":"https://github.com/aladdin-add/eslint-plugin"},"no-bad-naming-variables":{"repository":"https://github.com/kovboyjder/eslint-no-bad-naming"},"no-block-comments":{"repository":"https://github.com/alex-shnayder/eslint-plugin-no-empty-blocks"},"no-call":{"repository":"https://github.com/igat64/eslint-plugin-no-call"},"no-catch-all":{"repository":"https://github.com/MrLoh/eslint-plugin-no-catch-all"},"no-class":{"repository":"https://github.com/emmenko/eslint-plugin-no-class"},"no-compound-assigned-await":{"repository":"https://github.com/PJWalker/eslint-plugin-no-compound-assigned-await"},"no-constructor-bind":{"docs":"https://github.com/markalfred/eslint-plugin-no-constructor-bind/blob/master/docs/rules/","repository":"https://github.com/markalfred/eslint-plugin-no-constructor-bind"},"no-copy-paste-default-export":{"repository":"https://github.com/buildo/eslint-plugin-no-copy-paste-default-export"},"no-credentials":{"repository":"https://github.com/oprogramador/eslint-plugin-no-credentials"},"no-cyrillic-string":{"docs":"https://github.com/eprincev-egor/no-cyrillic-string/blob/master/docs/rules/","repository":"https://github.com/eprincev-egor/no-cyrillic-string"},"no-empty-disable":{"repository":"https://github.com/edwardpayton/eslint-plugin-no-empty-disable"},"no-es2015":{"repository":"https://github.com/NatureFeng/eslint-plugin-no-es2015"},"no-eslint-disable":{"repository":"https://github.com/unlight/eslint-plugin-no-eslint-disable"},"no-except":{"repository":"https://github.com/ryan-rushton/eslint-plugin-no-except"},"no-expectsaga-without-return":{"repository":"https://github.com/mmakarin/eslint-plugin-no-expectSaga-without-return"},"no-explicit-type-exports":{"repository":"https://github.com/intuit/eslint-plugin-no-explicit-type-exports"},"no-extension-in-require":{"repository":"https://github.com/pdubroy/eslint-plugin-no-extension-in-require"},"no-floating-promise":{"repository":"https://github.com/SebastienGllmt/eslint-plugin-no-floating-promise"},"no-for-of-loops":{"repository":"https://github.com/dharFr/eslint-plugin-no-for-of-loops"},"no-foreach":{"repository":"https://github.com/flying-sheep/eslint-plugin-no-foreach"},"no-function-declare-after-return":{"repository":"https://github.com/bhumijgupta/eslint-plugin-no-function-declare-after-return"},"no-global-lodash":{"repository":"https://github.com/adalbertoteixeira/eslint-plugin-no-global-lodash"},"no-http-protocol":{"repository":"https://github.com/pstephenwille/no-http-protocol"},"no-hyogo-police":{"repository":"https://github.com/pipboy3000/eslint-plugin-no-hyogo-police"},"no-if-not":{"repository":"https://github.com/bakkot/eslint-plugin-no-if-not"},"no-implicit-side-effects":{"repository":"https://github.com/jussi-kalliokoski/eslint-plugin-no-implicit-side-effects"},"no-inline-styles":{"repository":"https://github.com/nmanthena18/eslint-no-inline-styles"},"no-jquery":{"repository":"https://github.com/wikimedia/eslint-plugin-no-jquery"},"no-latethis":{"repository":"https://github.com/wyantb/eslint-plugin-nolatethis"},"no-lenght":{"repository":"https://github.com/enapupe/eslint-plugin-no-lenght"},"no-link-component":{"repository":"https://github.com/julienben/eslint-plugin-no-link-component"},"no-loops":{"repository":"https://github.com/buildo/eslint-plugin-no-loops"},"no-memo-displayname":{"repository":"https://github.com/patrykkopycinski/eslint-plugin-no-memo-displayname"},"no-null":{"repository":"https://github.com/nene/eslint-plugin-no-null"},"no-only-tests":{"repository":"https://github.com/levibuzolic/eslint-plugin-no-only-tests"},"no-proptypes-in-ts":{"repository":"https://github.com/JuanGaray93/no-proptypes-in-ts"},"no-react-scope-bound-assignment":{"repository":"https://github.com/betaorbust/eslint-plugin-no-react-scope-bound-assignment"},"no-recursion":{"repository":"https://github.com/simon-andrews/eslint-plugin-no-recursion"},"no-regex-dot":{"repository":"https://github.com/vitalif/eslint-plugin-no-regex-dot"},"no-relative-parent-require":{"repository":"https://github.com/ersel/eslint-plugin-no-relative-parent-require"},"no-require-self-ref":{"repository":"https://github.com/austinkelleher/eslint-plugin-no-require-self-ref"},"no-return":{"repository":"https://github.com/boiyaa/eslint-plugin-no-return"},"no-secrets":{"repository":"https://github.com/nickdeis/eslint-plugin-no-secrets"},"no-shit":{"repository":"https://github.com/jakubsadura/eslint-plugin-no-shit"},"no-skip-tests":{"repository":"https://github.com/romaingaillardjs/eslint-plugin-no-skip-tests"},"no-smart-quotes":{"docs":"https://github.com/seleb/eslint-plugin-no-smart-quotes/blob/master/docs/rules/","repository":"https://github.com/seleb/eslint-plugin-no-smart-quotes"},"no-snapshots":{"repository":"https://github.com/Johannesklint/eslint-plugin-snapshots"},"no-string":{"repository":"https://github.com/yangjiagongzi/eslint-plugin-no-string"},"no-this-in-jsx-component-name":{"repository":"https://github.com/julienben/eslint-plugin-no-this-in-jsx-component-name"},"no-type-assertion":{"repository":"https://github.com/Dremora/eslint-plugin-no-type-assertion"},"no-undef-class-this":{"repository":"https://github.com/langdonx/eslint-plugin-no-undef-class-this"},"no-unsafe-chars":{"repository":"https://github.com/DerZyklop/eslint-plugin-no-unsafe-chars"},"no-unsafe-regex":{"repository":"https://github.com/kgryte/eslint-plugin-no-unsafe-regex"},"no-unused-code":{"repository":"https://github.com/oaltman/eslint-plugin-no-unused-code"},"no-unused-expressions":{"repository":"https://github.com/clark800/eslint-plugin-no-unused-expressions"},"no-unused-vars-rest":{"repository":"https://github.com/bryanrsmith/eslint-plugin-no-unused-vars-rest"},"no-use-extend-native":{"repository":"https://github.com/dustinspecker/eslint-plugin-no-use-extend-native"},"no-useless-const":{"repository":"https://github.com/p7g/eslint-plugin-no-useless-const"},"no-var-reassign":{"repository":"https://github.com/jacksonrayhamilton/eslint-plugin-no-var-reassign"},"no-vue":{"repository":"https://github.com/avdeev/eslint-plugin-no-vue"},"node":{"docs":"https://github.com/mysticatea/eslint-plugin-node/blob/master/docs/rules/","repository":"https://github.com/mysticatea/eslint-plugin-node"},"node-globals":{"repository":"https://github.com/novemberborn/eslint-plugin-node-globals"},"node-papandreou":{"repository":"https://github.com/mysticatea/eslint-plugin-node"},"node-security-rules":{"repository":"https://github.com/lirantal/eslint-plugin-security"},"nommon":{"repository":"https://github.com/doochik/eslint-plugin-nommon"},"nosettimeout":{"repository":"https://github.com/eva1963/eslint-plugin-noSetimeoutTime"},"notice":{"repository":"https://github.com/nickdeis/eslint-plugin-notice"},"nowrap-in-template-string":{"repository":"https://github.com/coolzjy/eslint-plugin-nowrap-in-template-string"},"numeric-separators":{"repository":"https://github.com/chinanwu/eslint-plugin-long-numbers"},"nuxt":{"docs":"https://github.com/nuxt/eslint-plugin-nuxt/blob/master/docs/rules/","repository":"https://github.com/nuxt/eslint-plugin-nuxt"},"nwronski":{"repository":"https://github.com/nwronski/eslint-plugin"},"object-pattern-newline":{"repository":"https://github.com/AdaSupport/eslint-plugin-object-pattern-newline"},"objects":{"repository":"https://github.com/davidwaterston/eslint-plugin-objects"},"ocd":{"repository":"https://github.com/ciena-blueplanet/eslint-plugin-ocd"},"office-addins":{"repository":"https://github.com/OfficeDev/Office-Addin-Scripts"},"old-c-programmer":{"repository":"https://github.com/apowers313/eslint-plugin-old-c-programmer"},"one-variable-per-var":{"repository":"https://github.com/greggman/eslint-plugin-one-variable-per-var"},"only-error":{"repository":"https://github.com/davidjbradshaw/eslint-plugin-only-error"},"only-warn":{"repository":"https://github.com/bfanger/eslint-plugin-only-warn"},"openlayers-internal":{"repository":"https://github.com/openlayers/eslint-plugin-openlayers-internal"},"opensphere":{"repository":"https://github.com/ngageoint/eslint-plugin-opensphere"},"opinionated":{"repository":"https://github.com/dogma-io/eslint-plugin-opinionated"},"opipe":{"repository":"https://github.com/peoro/eslint-plugin-opipe"},"optimize-regex":{"docs":"https://github.com/BrainMaestro/eslint-plugin-optimize-regex/blob/master/docs/rules/","repository":"https://github.com/BrainMaestro/eslint-plugin-optimize-regex"},"orbit-components":{"repository":"https://github.com/kiwicom/orbit"},"ordered-grouped-import":{"repository":"https://github.com/catchfashion/eslint-plugin-grouped-import"},"ordered-imports":{"repository":"https://github.com/KyleMayes/eslint-plugin-ordered-imports"},"organize-imports":{"repository":"https://github.com/sagiavinash/eslint-plugin-organize-imports"},"oro":{"repository":"https://github.com/laboro/eslint-plugin-oro"},"ottofeller":{"repository":"https://github.com/gvidon/eslint-plugin-ottofeller"},"output-todo-comments":{"repository":"https://github.com/finom/eslint-plugin-output-todo-comments"},"p5js":{"repository":"https://github.com/marksherman/eslint-plugin-p5js"},"pabigot":{"repository":"https://github.com/pabigot/eslint-plugin-pabigot"},"padding":{"repository":"https://github.com/mu-io/eslint-plugin-padding"},"parentheses-around-await":{"repository":"https://github.com/yakovenkodenis/eslint-plugin-parentheses-around-await"},"parse":{"repository":"https://github.com/HappySale/eslint-plugin-parse"},"path-alias":{"repository":"https://github.com/msfragala/eslint-plugin-path-alias"},"pathnames":{"repository":"https://github.com/dvpnt/eslint-plugin-pathnames"},"patternfly-test":{"repository":"https://github.com/patternfly/patternfly-react"},"patternplate":{"repository":"https://github.com/marionebl/eslint-plugin-patternplate"},"peace":{"repository":"https://github.com/thoamsy/eslint-plugin-peace"},"pedantor":{"repository":"https://github.com/jnvm/eslint-plugin-pedantor"},"peopleai":{"repository":"https://github.com/behind-the-moon/eslint-plugin-peopleai"},"pep8-blank-lines":{"repository":"https://github.com/othree/eslint-plugin-pep8-blank-lines"},"perf":{"repository":"https://github.com/amilajack/eslint-plugin-perf"},"pg-sql":{"repository":"https://github.com/benjie/eslint-plugin-pg-sql"},"photoshop":{"repository":"https://github.com/StanLindsey/eslint-plugin-photoshop"},"php-markup":{"repository":"https://github.com/tengattack/eslint-plugin-php-markup"},"piggyback":{"repository":"https://github.com/cowchimp/eslint-plugin-piggyback"},"plantain":{"repository":"https://github.com/plantain-00/eslint-plugin-plantain"},"playlyfe":{"repository":"https://github.com/Mayank1791989/eslint-plugin-playlyfe"},"playwright":{"repository":"https://github.com/mxschmitt/eslint-plugin-playwright"},"plugintutorial":{"repository":"https://github.com/allan2coder/eslint-plugin-plugintutorial"},"pocket-fluff":{"repository":"https://github.com/betaorbust/eslint-plugin-pocket-fluff"},"polymer":{"repository":"https://github.com/stramel/eslint-plugin-polymer"},"postcss-modules":{"repository":"https://github.com/bmatcuk/eslint-plugin-postcss-modules"},"pragmatic-deprecate":{"repository":"https://github.com/bhaskar20/pragmatic-deprecate"},"preact-i18n":{"repository":"https://github.com/synacor/eslint-plugin-preact-i18n"},"prefer-arrow":{"repository":"https://github.com/TristonJ/eslint-plugin-prefer-arrow"},"prefer-bind-operator":{"repository":"https://github.com/erikdesjardins/eslint-plugin-prefer-bind-operator"},"prefer-import":{"repository":"https://github.com/dferrazm/eslint-plugin-prefer-import"},"prefer-number-isnan":{"repository":"https://github.com/Chamion/eslint-plugin-prefer-number-isnan"},"prefer-object-spread":{"repository":"https://github.com/bryanrsmith/eslint-plugin-prefer-object-spread"},"prefer-object-spread-fix":{"repository":"https://github.com/bryanrsmith/eslint-plugin-prefer-object-spread"},"prefer-spread":{"repository":"https://github.com/erikdesjardins/eslint-plugin-prefer-spread"},"prefer-type-alias":{"repository":"https://github.com/otofu-square/eslint-plugin-prefer-type-alias"},"prefix":{"repository":"https://github.com/m-hall/eslint-plugin-prefix"},"prettier":{"repository":"https://github.com/prettier/eslint-plugin-prettier"},"prettier-doc":{"repository":"https://github.com/fisker/eslint-plugin-prettier-doc"},"prettier-rules":{"repository":"https://github.com/iambrandonn/eslint-plugin-prettier-rules"},"prettier-vue":{"repository":"https://github.com/meteorlxy/eslint-plugin-prettier-vue"},"prettierx":{"repository":"https://github.com/aMarCruz/eslint-plugin-prettierx"},"prettiest":{"repository":"https://github.com/eamodio/eslint-plugin-prettiest"},"private-props":{"repository":"https://github.com/globetro/eslint-plugin-private-props"},"private-variables":{"repository":"https://github.com/shovon/javascript-private-variables"},"producthunt":{"repository":"https://github.com/producthunt/eslint-plugin-producthunt"},"promise":{"docs":"https://github.com/xjamundx/eslint-plugin-promise/blob/master/docs/rules/","repository":"https://github.com/xjamundx/eslint-plugin-promise"},"promise-catch":{"repository":"https://github.com/jakwuh/eslint-plugin-promise-catch"},"prop-has-no-shadow-declaration":{"repository":"https://github.com/tknysh/eslint-plugin-prop-has-no-shadow-declaration"},"prop-types-shorthand":{"repository":"https://github.com/helixbass/eslint-plugin-prop-types-shorthand"},"proposal":{"repository":"https://github.com/peakchen90/eslint-plugin-proposal"},"prototype-chain":{"repository":"https://github.com/boneskull/eslint-plugin-prototype-chain"},"protractor":{"repository":"https://github.com/alecxe/eslint-plugin-protractor"},"pug":{"repository":"https://github.com/myfreeweb/eslint-plugin-pug"},"pureness":{"repository":"https://github.com/rom-melnyk/eslint-plugin-pureness"},"putout":{"repository":"https://github.com/coderaiser/putout"},"quasar":{"repository":"https://github.com/quasarframework/eslint-plugin-quasar"},"quick-prettier":{"repository":"https://github.com/SalvatorePreviti/eslint-plugin-quick-prettier"},"quintoandar":{"repository":"https://github.com/quintoandar/eslint-config-quintoandar"},"qunar":{"repository":"https://github.com/zhongzhi107/eslint-plugin-qunar"},"qunit":{"docs":"https://github.com/platinumazure/eslint-plugin-qunit/blob/master/docs/rules/","repository":"https://github.com/platinumazure/eslint-plugin-qunit"},"radar":{"repository":"https://github.com/es-joy/eslint-plugin-radar"},"radargun":{"repository":"https://github.com/dsfields/eslint-plugin-radargun"},"rainbow":{"repository":"https://github.com/nexxtway/eslint-plugin-rainbow"},"rapid7":{"repository":"https://github.com/rapid7/eslint-plugin-rapid7"},"rational-studio":{"repository":"https://github.com/rational-studio/eslint-plugin-rational-studio"},"rax":{"repository":"https://github.com/raxjs/rax-scripts"},"react":{"docs":"https://github.com/yannickcr/eslint-plugin-react/blob/master/docs/rules/","repository":"https://github.com/yannickcr/eslint-plugin-react"},"react-app":{"repository":"https://github.com/mmazzarolo/eslint-plugin-react-app"},"react-compat":{"repository":"https://github.com/dogma-io/eslint-plugin-react-compat"},"react-css-module-hints":{"repository":"https://github.com/Bwca/eslint-plugin-react-css-modules"},"react-directives":{"repository":"https://github.com/peakchen90/eslint-plugin-react-directives"},"react-dvpnt":{"repository":"https://github.com/dvpnt/eslint-plugin-react-dvpnt"},"react-ep":{"repository":"https://github.com/yannickcr/eslint-plugin-react"},"react-etc":{"repository":"https://github.com/cartant/eslint-plugin-react-etc"},"react-extended":{"repository":"https://github.com/pustovalov/eslint-plugin-react-extended"},"react-flow":{"repository":"https://github.com/Kiwka/eslint-plugin-react-flow"},"react-form-fields":{"repository":"https://github.com/kotarella1110/eslint-plugin-react-form-fields"},"react-func":{"repository":"https://github.com/TomScavo/eslint-plugin-react-func"},"react-hooks":{"repository":"https://github.com/facebook/react"},"react-hooks-breadhead":{"repository":"https://github.com/breadhead/eslint-plugin-react-hooks-breadhead"},"react-hooks-ssr":{"repository":"https://github.com/correttojs/eslint-plugin-react-hooks-ssr"},"react-i18n":{"repository":"https://github.com/lolatravel/eslint-plugin-react-i18n"},"react-internal":{"repository":"https://github.com/npm/security-holder"},"react-intl-extractor":{"repository":"https://github.com/kesko-dev/eslint-plugin-react-intl-extractor"},"react-intl-static":{"repository":"https://github.com/leonardodino/eslint-plugin-react-intl-static"},"react-memo":{"repository":"https://github.com/steadicat/eslint-plugin-react-memo"},"react-native":{"docs":"https://github.com/intellicode/eslint-plugin-react-native/blob/master/docs/rules/","repository":"https://github.com/intellicode/eslint-plugin-react-native"},"react-native-a11y":{"docs":"https://github.com/FormidableLabs/eslint-plugin-react-native-a11y/blob/master/docs/rules/","repository":"https://github.com/FormidableLabs/eslint-plugin-react-native-a11y"},"react-native-animation-linter":{"repository":"https://github.com/khan/eslint-plugin-react-native-animation-linter"},"react-native-globals":{"repository":"https://github.com/satya164/eslint-plugin-react-native-globals"},"react-native-no-get-item-layout-prop-on-virtualized-list":{"repository":"https://github.com/yannickcr/eslint-plugin-react"},"react-native-normalized":{"repository":"https://github.com/JonnyBurger/eslint-plugin-react-native-normalized"},"react-native-wix":{"repository":"https://github.com/wix/eslint-config-wix"},"react-no-text-nodes":{"repository":"https://github.com/chaps-io/eslint-plugin-react-no-text-nodes"},"react-perf":{"docs":"https://github.com/cvazac/eslint-plugin-react-perf/blob/master/docs/rules/","repository":"https://github.com/cvazac/eslint-plugin-react-perf"},"react-performance-check":{"repository":"https://github.com/siling1990/ESLintRule"},"react-props":{"repository":"https://github.com/craigbilner/eslint-plugin-react-props"},"react-pug":{"repository":"https://github.com/ezhlobo/eslint-plugin-react-pug"},"react-redux":{"docs":"https://github.com/DianaSuvorova/eslint-plugin-react-redux/blob/master/docs/rules/","repository":"https://github.com/DianaSuvorova/eslint-plugin-react-redux"},"react-ssr":{"repository":"https://github.com/ytanruengsri/eslint-plugin-react-ssr"},"react-svg":{"repository":"https://github.com/raix/eslint-plugin-react-svg"},"react-with-styles":{"docs":"https://github.com/airbnb/eslint-plugin-react-with-styles/blob/master/docs/rules/","repository":"https://github.com/airbnb/eslint-plugin-react-with-styles"},"react-xhooks":{"repository":"https://github.com/xsjohn0306/eslint-plugin-react-xhooks"},"reactxp":{"repository":"https://github.com/a-tarasyuk/eslint-plugin-reactxp"},"readable":{"repository":"https://github.com/YounGoat/eslint-plugin-readable"},"reanimated":{"repository":"https://github.com/wcandillon/eslint-plugin-reanimated"},"rebase":{"repository":"https://github.com/AndersDJohnson/eslint-plugin-rebase"},"redux":{"repository":"https://github.com/Intellicode/eslint-plugin-redux"},"redux-reselect":{"repository":"https://github.com/viktor-ku/eslint-plugin-redux-reselect"},"redux-saga":{"docs":"https://github.com/pke/eslint-plugin-redux-saga/blob/master/docs/rules/","repository":"https://github.com/pke/eslint-plugin-redux-saga"},"regex":{"repository":"https://github.com/gmullerb/eslint-plugin-regex"},"regexp":{"docs":"https://github.com/ota-meshi/eslint-plugin-regexp/blob/master/docs/rules/","repository":"https://github.com/ota-meshi/eslint-plugin-regexp"},"reiwa":{"repository":"https://github.com/otofu-square/eslint-plugin-reiwa"},"relay":{"repository":"https://github.com/relayjs/eslint-plugin-relay"},"replyguy":{"repository":"https://github.com/jlengstorf/eslint-plugin-replyguy"},"require":{"repository":"https://github.com/bregenspan/eslint-plugin-require"},"require-call":{"repository":"https://github.com/NelsonFrancisco/eslint-plugin-require-call"},"require-decorator":{"repository":"https://github.com/ipekmuhammet/eslint-plugin-require-decorator"},"require-docs":{"repository":"https://github.com/findmypast-oss/eslint-plugin-require-docs"},"require-duplicate":{"repository":"https://github.com/LukaPrebil/eslint-plugin-require-duplicate"},"require-exact-proptypes":{"repository":"https://github.com/patrick-addepar/eslint-plugin-require-exact-proptypes"},"require-in-package":{"repository":"https://github.com/Craftsy/eslint-plugin-require-in-package"},"require-jsdoc-except":{"repository":"https://github.com/MaienM/eslint-plugin-require-jsdoc-except"},"require-jsdoc-focus":{"repository":"https://github.com/Bernardstanislas/eslint-plugin-require-jsdoc"},"require-path-exists":{"repository":"https://github.com/BohdanTkachenko/eslint-plugin-require-path-exists"},"require-sort":{"repository":"https://github.com/zcuric/eslint-plugin-require-sort"},"requirejs":{"docs":"https://github.com/cvisco/eslint-plugin-requirejs/blob/master/docs/rules/","repository":"https://github.com/cvisco/eslint-plugin-requirejs"},"reselect-utils":{"repository":"https://github.com/sgrishchenko/reselect-utils"},"restify-use-next":{"repository":"https://github.com/rajatkumar/eslint-plugin-restify-use-next"},"restrict-named-import":{"repository":"https://github.com/ozaki25/eslint-plugin-restrict-named-import"},"resub":{"repository":"https://github.com/a-tarasyuk/eslint-plugin-resub"},"return-early-dont-assign":{"repository":"https://github.com/deadbeef404/eslint-plugin-return-early-dont-assign"},"revizto":{"repository":"https://github.com/revizto/eslint-rules"},"richtext-cp":{"repository":"https://github.com/dmonego/eslint-plugin-richtext-cp"},"riot":{"repository":"https://github.com/txchen/eslint-plugin-riot"},"risxss":{"repository":"https://github.com/theodo/RisXSS"},"rn-a11y":{"repository":"https://github.com/grgr-dkrk/eslint-plugin-rn-a11y"},"robber-language":{"repository":"https://github.com/santi/eslint-plugin-robber-language"},"rocket-skates":{"repository":"https://github.com/hildjj/eslint-plugin-rocket-skates"},"roku":{"repository":"https://github.com/RokuRoad/eslint-plugin-roku"},"row-num":{"repository":"https://github.com/codsen/codsen"},"rpgmaker":{"repository":"https://github.com/waynee95/eslint-plugin-rpgmaker"},"rtaro":{"repository":"https://github.com/NervJS/taro"},"ru-typography":{"repository":"https://github.com/doochik/eslint-plugin-ru-typography"},"runtime-internal":{"repository":"https://github.com/runtimejs/eslint-plugin-runtime-internal"},"rut":{"repository":"https://github.com/milesj/rut"},"rxjs":{"repository":"https://github.com/cartant/eslint-plugin-rxjs"},"rxjs-traits":{"repository":"https://github.com/cartant/eslint-plugin-rxjs-traits"},"ryanair":{"repository":"https://github.com/ryanair/linters"},"salesforce-commercecloud":{"repository":"https://github.com/t-huth/eslint-plugin-salesforce-commercecloud"},"saxo":{"repository":"https://github.com/saxobank/eslint-plugin-saxo"},"scanjs-rules":{"repository":"https://github.com/mozfreddyb/eslint-plugin-scanjs-rules"},"scd":{"repository":"https://github.com/uttk/eslint-plugin-scd"},"screeps":{"repository":"https://github.com/postcrafter/eslint-plugin-screeps"},"sdwvit-eslint-plugin-svelte3":{"repository":"https://github.com/sveltejs/eslint-plugin-svelte3"},"security":{"repository":"https://github.com/nodesecurity/eslint-plugin-security"},"security-node":{"docs":"https://github.com/gkouziik/eslint-plugin-security-node/blob/master/docs/rules/","repository":"https://github.com/gkouziik/eslint-plugin-security-node"},"segment-ember-actions":{"repository":"https://github.com/authmaker/segment-ember-actions"},"self":{"repository":"https://github.com/not-an-aardvark/eslint-plugin-self"},"self-dir":{"repository":"https://github.com/not-an-aardvark/eslint-plugin-self"},"semantic-naming":{"repository":"https://github.com/Moncader/eslint-plugin-semantic-naming"},"semistandard-react":{"repository":"https://github.com/adamelliotfields/eslint-plugin-semistandard-react"},"sensible":{"repository":"https://github.com/esatterwhite/eslint-plugin-sensible"},"sentry-csii-internal-eslint-plugin-sdk":{"repository":"https://github.com/getsentry/sentry-javascript"},"sequel":{"repository":"https://github.com/5app/eslint-plugin-sequel"},"servicenow":{"repository":"https://github.com/arnoudkooi/eslint-plugin-servicenow"},"set-iterable":{"repository":"https://github.com/fernap3/eslint-plugin-set-iterable"},"settimeout":{"repository":"https://github.com/udemy/eslint-udemy"},"shopify":{"repository":"https://github.com/Shopify/eslint-plugin-shopify"},"shopify-lean":{"repository":"https://github.com/sebastian-software/eslint-plugin-shopify-lean"},"should-promised":{"repository":"https://github.com/dbrockman/eslint-plugin-should-promised"},"simple-i18n-text":{"repository":"https://github.com/azu/eslint-plugin-simple-i18n-text"},"simple-import-sort":{"repository":"https://github.com/lydell/eslint-plugin-simple-import-sort"},"simple-jsx":{"repository":"https://github.com/putan/eslint-plugin-simple-jsx"},"skip-adobe-directives":{"repository":"https://github.com/KisoYuki/eslint-plugin-skip-adobe-directives"},"skip-nolint-lines":{"repository":"https://github.com/gregsabo/eslint-plugin-skip-nolint-lines"},"skyscanner-dates":{"repository":"https://github.com/Skyscanner/eslint-plugin-skyscanner-dates"},"slite":{"repository":"https://github.com/sliteteam/eslint-plugin-slite"},"small-import":{"repository":"https://github.com/JonnyBurger/eslint-plugin-react-native-normalized"},"smart-quotes":{"repository":"https://github.com/jmont/eslint-plugin-smart-quotes"},"smart-sort":{"repository":"https://github.com/MoonW1nd/eslint-plugin-smart-sort"},"smartprocure":{"repository":"https://github.com/smartprocure/eslint-plugin-smartprocure"},"smells":{"repository":"https://github.com/elijahmanor/eslint-plugin-smells"},"smelly":{"repository":"https://github.com/qix-/eslint-plugin-smelly"},"smtxt":{"repository":"https://github.com/sematext/eslint-plugin-smtxt"},"so-jah-seh":{"repository":"https://github.com/independentgeorge/eslint-plugin-so-jah-seh"},"solfegejs":{"repository":"https://github.com/solfegejs/eslint-plugin"},"sonar":{"repository":"https://github.com/rx-ts/eslint-plugin-sonar"},"sonarjs":{"docs":"https://github.com/SonarSource/eslint-plugin-sonarjs/blob/master/docs/rules/","repository":"https://github.com/SonarSource/eslint-plugin-sonarjs"},"sonarjs-6":{"repository":"https://github.com/SonarSource/eslint-plugin-sonarjs"},"sort":{"repository":"https://github.com/mskelton/eslint-plugin-sort"},"sort-class-members":{"repository":"https://github.com/bryanrsmith/eslint-plugin-sort-class-members"},"sort-class-members-allow-null":{"repository":"https://github.com/haxxxton/eslint-plugin-sort-class-members"},"sort-destructure-keys":{"docs":"https://github.com/mthadley/eslint-plugin-sort-destructure-keys/blob/master/docs/rules/","repository":"https://github.com/mthadley/eslint-plugin-sort-destructure-keys"},"sort-dojo-dependency":{"repository":"https://github.com/jpgtama/eslint-plugin-sort-dojo-dependency"},"sort-export-all":{"repository":"https://github.com/nirtamir2/eslint-plugin-sort-export-all"},"sort-exports":{"repository":"https://github.com/jrdrg/eslint-plugin-sort-exports"},"sort-import":{"repository":"https://github.com/mistertemp/eslint-plugin-sort-import"},"sort-imports-es6":{"repository":"https://github.com/erikdesjardins/eslint-plugin-sort-imports-es6"},"sort-imports-es6-autofix":{"repository":"https://github.com/schuchertmanagementberatung/eslint-plugin-sort-imports-es6-autofix"},"sort-keys-shorthand":{"repository":"https://github.com/fxOne/eslint-plugin-sort-keys-shorthand"},"sort-requires":{"repository":"https://github.com/kentor/eslint-plugin-sort-requires"},"sort-requires-by-path":{"repository":"https://github.com/oaltman/eslint-plugin-sort-requires-by-path"},"sorting":{"repository":"https://github.com/jacobrask/eslint-plugin-sorting"},"sowing-machine":{"repository":"https://github.com/harrysolovay/sowing-machine"},"spellcheck":{"repository":"https://github.com/aotaduy/eslint-plugin-spellcheck"},"speller":{"repository":"https://github.com/itlci/eslint-plugin-speller"},"spellingbee":{"repository":"https://github.com/eschaefer/eslint-plugin-spellingbee"},"springload":{"repository":"https://github.com/springload/eslint-plugin-springload"},"springworks":{"repository":"https://github.com/Springworks/eslint-plugin-springworks"},"spruce":{"repository":"https://github.com/sprucelabsai/workspace.sprucebot-skills-kit"},"sql":{"repository":"https://github.com/gajus/eslint-plugin-sql"},"sql-injection":{"repository":"https://github.com/gavinaiken/eslint-plugin-sql-injection"},"square":{"docs":"https://github.com/square/eslint-plugin-square/blob/master/docs/rules/","repository":"https://github.com/square/eslint-plugin-square"},"srp-hints":{"repository":"https://github.com/eliasm307/eslint-plugin-srp-hints"},"ssr-friendly":{"repository":"https://github.com/kopiro/eslint-plugin-ssr-friendly"},"standard2":{"repository":"https://github.com/aeharding/eslint-plugin-standard2"},"starry":{"repository":"https://github.com/npm/security-holder"},"starscraper":{"repository":"https://github.com/star-scraper/eslint-plugin-starscraper"},"state":{"repository":"https://github.com/JackFei/eslint-plugin-state"},"stencil":{"repository":"https://github.com/addtoevent/stencil-eslint"},"step-functions":{"repository":"https://github.com/bdgamble/eslint-plugin-step-functions"},"stormtrooper-eslint-plugin-css-modules":{"repository":"https://github.com/atfzl/eslint-plugin-css-modules"},"storybook":{"repository":"https://github.com/rafaelrozon/eslint-plugin-storybook"},"strict-booleans":{"repository":"https://github.com/vinceau/eslint-plugin-strict-booleans"},"strict-newline":{"repository":"https://github.com/MitMaro/eslint-plugin-strict-newline"},"strict-vue":{"repository":"https://github.com/GlebkaF/eslint-plugin-strict-vue"},"stringly-typed":{"repository":"https://github.com/eddieantonio/eslint-plugin-stringly-typed"},"strudel":{"repository":"https://github.com/strudeljs/eslint-plugin-strudel"},"style":{"repository":"https://github.com/tao-cumplido/eslint-plugin-style"},"styled-components-varname":{"repository":"https://github.com/macinjoke/eslint-plugin-styled-components-varname"},"styled-no-color-value":{"repository":"https://github.com/phobal/eslint-plugin-styled-no-color-value"},"styles-object":{"repository":"https://github.com/helixbass/eslint-plugin-styles-object"},"stzhang":{"repository":"https://github.com/stuartZhang/eslint-plugin-amo"},"suitescript":{"repository":"https://github.com/acdvs/eslint-plugin-suitescript"},"summer":{"repository":"https://github.com/1natsu172/eslint-summer"},"svelte":{"repository":"https://github.com/JounQin/eslint-plugin-svelte"},"svelte3":{"repository":"https://github.com/sveltejs/eslint-plugin-svelte3"},"svelte3-new":{"repository":"https://github.com/sveltejs/eslint-plugin-svelte3"},"svelte3-patch":{"repository":"https://github.com/sveltejs/eslint-plugin-svelte3"},"svelte3-preprocess":{"repository":"https://github.com/sveltejs/eslint-plugin-svelte3"},"svgo":{"repository":"https://github.com/CodeWitchBella/eslint-plugin-svgo"},"swarmia-dev":{"repository":"https://github.com/swarmia/eslint"},"switch-case":{"repository":"https://github.com/lukeapage/eslint-plugin-switch-case"},"system-import-strings":{"repository":"https://github.com/pwmckenna/eslint-plugin-system-import-strings"},"tachecker":{"repository":"https://github.com/linshaolie/eslint-plugin-tachecker"},"tachyons-jsx":{"repository":"https://github.com/Bebersohl/eslint-plugin-tachyons-jsx"},"tailwind":{"repository":"https://github.com/Idered/eslint-plugin-tailwind"},"tailwindcss":{"repository":"https://github.com/francoismassart/eslint-plugin-tailwindcss"},"talltotal":{"repository":"https://github.com/talltotal/eslint-plugin-talltotal"},"tanda":{"repository":"https://github.com/deecewan/eslint-plugin-tanda"},"tanok":{"repository":"https://github.com/kindritskyiMax/eslint-plugin-tanok"},"tape":{"repository":"https://github.com/atabel/eslint-plugin-tape"},"taro":{"repository":"https://github.com/NervJS/taro"},"tdd":{"repository":"https://github.com/Fox-n-Rabbit/fxnrbt"},"template":{"repository":"https://github.com/gramener/eslint-plugin-template"},"ternaries":{"repository":"https://github.com/divyagnan/eslint-plugin-ternaries"},"ternary":{"docs":"https://github.com/grayedfox/eslint-plugin-ternary/blob/master/docs/rules/","repository":"https://github.com/grayedfox/eslint-plugin-ternary"},"test-filenames":{"repository":"https://github.com/spalger/eslint-plugin-test-filenames"},"test-id":{"docs":"https://github.com/prashantswami/eslint-plugin-test-id/blob/master/docs/rules/","repository":"https://github.com/prashantswami/eslint-plugin-test-id"},"test-import-paths":{"repository":"https://github.com/jeyj0/eslint-plugin-test-import-paths"},"test-names":{"repository":"https://github.com/DanielMSchmidt/eslint-plugin-test-names"},"test-num":{"repository":"https://github.com/codsen/codsen"},"test91":{"repository":"https://github.com/netless-io/eslint-plugin-netless"},"testcafe":{"repository":"https://github.com/miherlosev/eslint-plugin-testcafe"},"testcafe-community":{"repository":"https://github.com/testcafe-community/eslint-plugin-testcafe-community"},"testcafe-extended":{"repository":"https://github.com/stefanschenk/eslint-plugin-testcafe-extended"},"testdouble":{"repository":"https://github.com/michaelanthonymain/eslint-plugin-testdouble"},"testing-library":{"docs":"https://github.com/testing-library/eslint-plugin-testing-library/blob/master/docs/rules/","repository":"https://github.com/testing-library/eslint-plugin-testing-library"},"this":{"repository":"https://github.com/matijs/eslint-plugin-this"},"thunderball":{"repository":"https://github.com/angieslist/thunderball.io"},"tick-tock-jsdoc":{"repository":"https://github.com/ewandennis/eslint-plugin-tick-tock-jsdoc"},"todo-comments":{"repository":"https://github.com/fXy-during/eslint-plugin-todo-comments"},"todo-ddl":{"repository":"https://github.com/ATQQ/eslint-plugin-todo-ddl"},"todo-plz":{"repository":"https://github.com/sawyerh/eslint-plugin-todo-plz"},"todos":{"repository":"https://github.com/auhau/eslint-plugin-todos"},"toml":{"repository":"https://github.com/ota-meshi/eslint-plugin-toml"},"toplevel":{"repository":"https://github.com/HKalbasi/eslint-plugin-toplevel"},"total-functions":{"repository":"https://github.com/danielnixon/eslint-plugin-total-functions"},"tree-shaking":{"repository":"https://github.com/lukastaegert/eslint-plugin-tree-shaking"},"tribou":{"repository":"https://github.com/tribou/eslint-plugin-tribou"},"ts-ban-snippets":{"repository":"https://github.com/mrseanryan/eslint-plugin-ts-ban-snippets"},"ts-expect":{"repository":"https://github.com/4Catalyzer/eslint-plugin-ts-expect"},"ts-import":{"repository":"https://github.com/bradennapier/eslint-plugin-ts-import"},"ts-wasmify":{"repository":"https://github.com/JaroslawPokropinski/eslint-plugin-ts-wasmify"},"tsc":{"repository":"https://github.com/unlight/eslint-plugin-tsc"},"tsdoc":{"repository":"https://github.com/microsoft/tsdoc"},"tslint-comments":{"repository":"https://github.com/drewwyatt/eslint-plugin-tslint-comments"},"turbopatent":{"repository":"https://github.com/PatentNavigation/eslint-plugin-turbopatent"},"type-graphql":{"repository":"https://github.com/borremosch/eslint-plugin-type-graphql"},"types":{"repository":"https://github.com/dissimulate/eslint-plugin-types"},"typescript-custom-sort-keys":{"repository":"https://github.com/prash471/eslint-plugin-typescript-sort-keys"},"typescript-enum":{"repository":"https://github.com/shian15810/eslint-plugin-typescript-enum"},"typescript-require-readonly":{"repository":"https://github.com/krailler/eslint-plugin-typescript-require-readonly"},"typescript-sort-keys":{"repository":"https://github.com/infctr/eslint-plugin-typescript-sort-keys"},"udemy":{"repository":"https://github.com/udemy/js-tooling"},"ui-testing":{"docs":"https://github.com/kwoding/eslint-plugin-ui-testing/blob/master/docs/rules/","repository":"https://github.com/kwoding/eslint-plugin-ui-testing"},"uncalled-iife":{"repository":"https://github.com/romainmenke/eslint-plugin-uncalled-iife"},"undef-init":{"repository":"https://github.com/bendtherules/eslint-plugin-undef-init"},"underscore":{"repository":"https://github.com/captbaritone/eslint-plugin-underscore"},"undocumented-env":{"repository":"https://github.com/lennym/eslint-plugin-implicit-dependencies"},"unicorn":{"docs":"https://github.com/sindresorhus/eslint-plugin-unicorn/blob/master/docs/rules/","repository":"https://github.com/sindresorhus/eslint-plugin-unicorn"},"unused-imports":{"docs":"https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/","repository":"https://github.com/sweepline/eslint-plugin-unused-imports"},"use-decorator":{"repository":"https://github.com/team-parallax/eslint-plugin-use-decorator"},"use-macros":{"repository":"https://github.com/wantedly/frolint"},"use-numeric-separator":{"repository":"https://github.com/RateGravity/eslint-plugin-use-numeric-separator"},"use-optional-annotation":{"repository":"https://github.com/Akagire/eslint-plugin-use-optional-annotation"},"use-storeon":{"repository":"https://github.com/Minyens/eslint-plugin-use-storeon"},"uuapp":{"repository":"https://github.com/jiridudekusy/eslint-plugin-uuapp"},"valtech":{"repository":"https://github.com/valtech-nyc/eslint-plugin-valtech"},"valtio":{"repository":"https://github.com/pmndrs/eslint-plugin-valtio"},"var-length":{"repository":"https://github.com/uhyo/eslint-plugin-var-length"},"variablenamecheck":{"repository":"https://github.com/npm/npm"},"variablenamecheck1":{"repository":"https://github.com/npm/npm"},"variables":{"repository":"https://github.com/frsv/eslint-plugin-variables"},"verdaccio":{"repository":"https://github.com/verdaccio/monorepo"},"videoamp":{"repository":"https://github.com/VideoAmp/eslint-plugin-videoamp"},"view-models":{"repository":"https://github.com/asbjornh/eslint-plugin-view-models"},"viper":{"repository":"https://github.com/cxdongjack/eslint-plugin-viper"},"viper-v2":{"repository":"https://github.com/Nigiss/eslint-plugin-viper"},"viper-v3":{"repository":"https://github.com/Nigiss/eslint-plugin-viper-v3"},"vitsaus":{"repository":"https://github.com/Vitsaus/eslint-plugin-vitsaus"},"void":{"repository":"https://github.com/Chamion/eslint-plugin-void"},"void-only-side-effects":{"repository":"https://github.com/Chamion/eslint-plugin-void-only-side-effects"},"vtex":{"repository":"https://github.com/vtex/typescript"},"vue":{"docs":"https://github.com/vuejs/eslint-plugin-vue/blob/master/docs/rules/","repository":"https://github.com/vuejs/eslint-plugin-vue"},"vue-extras":{"docs":"https://github.com/przemyslawjanpietrzak/eslint-plugin-vue-extras/blob/master/docs/rules/","repository":"https://github.com/przemyslawjanpietrzak/eslint-plugin-vue-extras"},"vue-libs":{"repository":"https://github.com/vuejs/eslint-plugin-vue-libs"},"vue-oboi":{"repository":"https://github.com/maxming2333/eslint-plugin-vue-oboi"},"vue-root-class":{"repository":"https://github.com/wiese/eslint-plugin-vue-root-class"},"vue-scoped-css":{"repository":"https://github.com/future-architect/eslint-plugin-vue-scoped-css"},"vue-style-tag":{"repository":"https://github.com/talltotal/eslint-plugin-vue-style-tag"},"vue-types":{"repository":"https://github.com/dwightjack/eslint-plugin-vue-types"},"vuefix":{"repository":"https://github.com/lkiarest/eslint-plugin-vuefix"},"vuetify":{"repository":"https://github.com/vuetifyjs/eslint-plugin-vuetify"},"wantedly":{"repository":"https://github.com/wantedly/frolint"},"wc":{"repository":"https://github.com/43081j/eslint-plugin-wc"},"wdio":{"repository":"https://github.com/webdriverio/webdriverio"},"web":{"repository":"https://github.com/aladdin-add/eslint-plugin"},"webassembly":{"repository":"https://github.com/xtuc/webassemblyjs"},"webgl":{"repository":"https://github.com/amilajack/eslint-plugin-webgl"},"webgl-logic":{"repository":"https://github.com/peteward44/eslint-plugin-webgl-logic"},"webpack-eslint-plugin":{"repository":"https://github.com/eyasliu/webpack-eslint-plugin"},"weex":{"repository":"https://github.com/erha19/eslint-plugin-weex"},"weex-bundle":{"repository":"https://github.com/Hanks10100/eslint-plugin-weex-bundle"},"weex-vue":{"repository":"https://github.com/erha19/eslint-plugin-weex-vue"},"weiyi":{"repository":"https://github.com/borenXue/front-packages"},"wemlion":{"repository":"https://github.com/AngusFu/wemlion-frontend-conf"},"whitespace":{"repository":"https://github.com/willklein/eslint-plugin-whitespace"},"with-tsc-error":{"repository":"https://github.com/mkusaka/eslint-plugin-with-tsc-error"},"wix-custom-rules":{"repository":"https://github.com/wix-incubator/wix-eslint-custom-rules"},"wix-editor":{"repository":"https://github.com/wix/eslint-plugin-wix-editor"},"wkovacs64":{"repository":"https://github.com/wKovacs64/eslint-plugin-wkovacs64"},"woke":{"repository":"https://github.com/amwmedia/eslint-plugin-woke"},"wolkenkit":{"repository":"https://github.com/thenativeweb/eslint-plugin-wolkenkit"},"workspaces":{"repository":"https://github.com/joshuajaco/eslint-plugin-workspaces"},"wtf":{"repository":"https://github.com/qix-/eslint-plugin-wtf"},"wyze":{"repository":"https://github.com/wyze/eslint-plugin-wyze"},"xogroup":{"repository":"https://github.com/xogroup/eslint-plugin-xogroup"},"xss":{"repository":"https://github.com/Rantanen/eslint-plugin-xss"},"xunit":{"repository":"https://github.com/rochejul/eslint-plugin-xunit"},"xupea":{"repository":"https://github.com/xupea/eslint-plugin-xupea"},"xxx-eslint":{"repository":"https://github.com/SaiRS/eslint-plugin-xxx-eslint"},"yaml":{"repository":"https://github.com/aminya/eslint-plugin-yaml"},"yml":{"repository":"https://github.com/ota-meshi/eslint-plugin-yml"},"yoast":{"repository":"https://github.com/Yoast/eslint-plugin"},"yola":{"repository":"https://github.com/yola/eslint-plugin-yola"},"you-dont-need-momentjs":{"repository":"https://github.com/you-dont-need/You-Dont-Need-Momentjs"},"you-dont-need-recompose":{"repository":"https://github.com/icrosil/eslint-plugin-you-dont-need-recompose"},"zacanger":{"repository":"https://github.com/zacanger/eslint-plugin-zacanger"},"zero":{"repository":"https://github.com/zero-config/eslint-plugin-zero"},"zero-config":{"repository":"https://github.com/exelord/eslint-plugin-zero-config"},"zooshgroup":{"repository":"https://github.com/zooshgroup/eslint-plugin-zooshgroup"},"zving-specifications":{"repository":"https://github.com/abeet/eslint-plugin-zving-specifications"}}');
+
+/***/ }),
+
+/***/ 8634:
+/***/ ((module) => {
+
+"use strict";
+module.exports = JSON.parse('{"addendum":"addenda","aircraft":"aircraft","alga":"algae","alumna":"alumnae","alumnus":"alumni","amoeba":"amoebae","analysis":"analyses","antenna":"antennae","antithesis":"antitheses","apex":"apices","appendix":"appendices","automaton":"automata","axis":"axes","bacillus":"bacilli","bacterium":"bacteria","barracks":"barracks","basis":"bases","beau":"beaux","bison":"bison","buffalo":"buffalo","bureau":"bureaus","cactus":"cacti","calf":"calves","carp":"carp","census":"censuses","chassis":"chassis","cherub":"cherubim","child":"children","château":"châteaus","cod":"cod","codex":"codices","concerto":"concerti","corpus":"corpora","crisis":"crises","criterion":"criteria","curriculum":"curricula","datum":"data","deer":"deer","diagnosis":"diagnoses","die":"dice","dwarf":"dwarfs","echo":"echoes","elf":"elves","elk":"elk","ellipsis":"ellipses","embargo":"embargoes","emphasis":"emphases","erratum":"errata","faux pas":"faux pas","fez":"fezes","firmware":"firmware","fish":"fish","focus":"foci","foot":"feet","formula":"formulae","fungus":"fungi","gallows":"gallows","genus":"genera","goose":"geese","graffito":"graffiti","grouse":"grouse","half":"halves","hero":"heroes","hoof":"hooves","hovercraft":"hovercraft","hypothesis":"hypotheses","index":"indices","kakapo":"kakapo","knife":"knives","larva":"larvae","leaf":"leaves","libretto":"libretti","life":"lives","loaf":"loaves","locus":"loci","louse":"lice","man":"men","matrix":"matrices","means":"means","medium":"media","media":"media","memorandum":"memoranda","millennium":"millennia","minutia":"minutiae","moose":"moose","mouse":"mice","nebula":"nebulae","nemesis":"nemeses","neurosis":"neuroses","news":"news","nucleus":"nuclei","oasis":"oases","offspring":"offspring","opus":"opera","ovum":"ova","ox":"oxen","paralysis":"paralyses","parenthesis":"parentheses","person":"people","phenomenon":"phenomena","phylum":"phyla","pike":"pike","polyhedron":"polyhedra","potato":"potatoes","prognosis":"prognoses","quiz":"quizzes","radius":"radii","referendum":"referenda","salmon":"salmon","scarf":"scarves","self":"selves","series":"series","sheep":"sheep","shelf":"shelves","shrimp":"shrimp","spacecraft":"spacecraft","species":"species","spectrum":"spectra","squid":"squid","stimulus":"stimuli","stratum":"strata","swine":"swine","syllabus":"syllabi","symposium":"symposia","synopsis":"synopses","synthesis":"syntheses","tableau":"tableaus","that":"those","thesis":"theses","thief":"thieves","this":"these","tomato":"tomatoes","tooth":"teeth","trout":"trout","tuna":"tuna","vertebra":"vertebrae","vertex":"vertices","veto":"vetoes","vita":"vitae","vortex":"vortices","watercraft":"watercraft","wharf":"wharves","wife":"wives","wolf":"wolves","woman":"women"}');
+
+/***/ }),
+
 /***/ 8354:
 /***/ ((module) => {
 
@@ -15860,6 +18093,14 @@ module.exports = require("tls");;
 
 /***/ }),
 
+/***/ 3867:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("tty");;
+
+/***/ }),
+
 /***/ 8835:
 /***/ ((module) => {
 
@@ -15898,8 +18139,8 @@ module.exports = require("zlib");;
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			// no module.id needed
-/******/ 			// no module.loaded needed
+/******/ 			id: moduleId,
+/******/ 			loaded: false,
 /******/ 			exports: {}
 /******/ 		};
 /******/ 	
@@ -15911,6 +18152,9 @@ module.exports = require("zlib");;
 /******/ 		} finally {
 /******/ 			if(threw) delete __webpack_module_cache__[moduleId];
 /******/ 		}
+/******/ 	
+/******/ 		// Flag the module as loaded
+/******/ 		module.loaded = true;
 /******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
@@ -15954,6 +18198,15 @@ module.exports = require("zlib");;
 /******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
 /******/ 			}
 /******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/node module decorator */
+/******/ 	(() => {
+/******/ 		__nccwpck_require__.nmd = (module) => {
+/******/ 			module.paths = [];
+/******/ 			if (!module.children) module.children = [];
+/******/ 			return module;
 /******/ 		};
 /******/ 	})();
 /******/ 	
@@ -16034,9 +18287,9 @@ var retext_stringify_default = /*#__PURE__*/__nccwpck_require__.n(retext_stringi
 // EXTERNAL MODULE: ./node_modules/dictionary-en-gb/index.js
 var dictionary_en_gb = __nccwpck_require__(7161);
 var dictionary_en_gb_default = /*#__PURE__*/__nccwpck_require__.n(dictionary_en_gb);
-// EXTERNAL MODULE: ./node_modules/vfile-reporter/index.js
-var vfile_reporter = __nccwpck_require__(8366);
-var vfile_reporter_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter);
+// EXTERNAL MODULE: ./node_modules/vfile-reporter-pretty/index.js
+var vfile_reporter_pretty = __nccwpck_require__(2088);
+var vfile_reporter_pretty_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter_pretty);
 // EXTERNAL MODULE: external "fs"
 var external_fs_ = __nccwpck_require__(5747);
 var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
@@ -16091,9 +18344,12 @@ const octokit = github.getOctokit(github_token);
         .use((retext_indefinite_article_default()))
         .use((retext_stringify_default()))
         .process(data, (err, file) => {
-          const body = vfile_reporter_default()(err || file);
-          console.log(body);
-
+          const body = `
+          <details>
+          <summary>Review tips to improve ${PRFile}</summary>
+          ${vfile_reporter_pretty_default()(err || file)}
+          </details>
+          `
           octokit.issues.createComment({
             owner,
             repo,

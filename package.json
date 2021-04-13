@@ -25,6 +25,7 @@
     "retext-stringify": "^2.0.4",
     "retext-usage": "^0.5.0",
     "to-vfile": "^6.1.0",
-    "vfile-reporter": "^6.0.2"
+    "vfile-reporter": "^6.0.2",
+    "vfile-reporter-pretty": "^5.0.0"
   }
 }

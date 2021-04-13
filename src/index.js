@@ -13,7 +13,7 @@ import repeated from 'retext-repeated-words';
 import indefiniteArticle from 'retext-indefinite-article';
 import stringify from 'retext-stringify';
 import dictionary from 'dictionary-en-gb';
-import report from 'vfile-reporter';
+import report from 'vfile-reporter-pretty';
 
 const github_token = core.getInput('github_token');
 const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
@@ -45,9 +45,12 @@ const octokit = github.getOctokit(github_token);
         .use(indefiniteArticle)
         .use(stringify)
         .process(data, (err, file) => {
-          const body = report(err || file);
-          console.log(body);
-
+          const body = `
+          <details>
+          <summary>Review tips to improve ${PRFile}</summary>
+          ${report(err || file)}
+          </details>
+          `
           octokit.issues.createComment({
             owner,
             repo,
