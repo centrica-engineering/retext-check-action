@@ -16267,7 +16267,7 @@ if (!github_token) {
   core.warning('Github token was not set');
 }
 
-const octokit = github.GitHub(github_token);
+const octokit = github.getOctokit(github_token);
 
 (async () => {
   const filesChanged = await getChangedFiles(octokit, repo, owner);
