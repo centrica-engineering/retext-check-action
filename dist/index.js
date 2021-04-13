@@ -16269,9 +16269,9 @@ const octokit = github.getOctokit(github_token);
 
   filesChanged.forEach((PRFile) => {
     if (PRFile.endsWith('.md') || PRFile.endsWith('.markdown')) {
-      console.log(process.env.GITHUB_WORKSPACE, PRFile);
-      const data = external_fs_default().readFileSync(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile), { encoding: 'utf8', flag: 'r' });
-
+      console.log('workspace::', process.env.GITHUB_WORKSPACE, 'file::', PRFile);
+      const data = external_fs_default().readFileSync(external_path_default().join(process.env.GITHUB_WORKSPACE, PRFile), { encoding: 'utf8', flag: 'r' }).catch(e => console.log(e));
+      console.log(data);
       retext_default()()
         .use((retext_english_default()))
         .use((retext_equality_default()))
@@ -16283,7 +16283,7 @@ const octokit = github.getOctokit(github_token);
         .use((retext_stringify_default()))
         .process(data, (err, file) => {
           const body = vfile_reporter_default()(err || file);
-          console.error(body);
+          console.log(body);
 
           octokit.issues.createComment({
             owner,
