@@ -13,7 +13,7 @@ import repeated from 'retext-repeated-words';
 import indefiniteArticle from 'retext-indefinite-article';
 import stringify from 'retext-stringify';
 import dictionary from 'dictionary-en-gb';
-import report from 'vfile-reporter-pretty';
+import report from 'vfile-reporter';
 
 const github_token = core.getInput('github_token');
 const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
