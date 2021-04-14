@@ -49,7 +49,7 @@ const octokit = github.getOctokit(github_token);
 <details>
 <summary>Review tips to improve ${PRFile}</summary>
 
-${report(err || file)}
+${file}
 
 </details>
 `

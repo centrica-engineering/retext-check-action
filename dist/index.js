@@ -16036,7 +16036,6 @@ var dictionary_en_gb = __nccwpck_require__(7161);
 var dictionary_en_gb_default = /*#__PURE__*/__nccwpck_require__.n(dictionary_en_gb);
 // EXTERNAL MODULE: ./node_modules/vfile-reporter/index.js
 var vfile_reporter = __nccwpck_require__(8366);
-var vfile_reporter_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter);
 // EXTERNAL MODULE: external "fs"
 var external_fs_ = __nccwpck_require__(5747);
 var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
@@ -16095,7 +16094,7 @@ const octokit = github.getOctokit(github_token);
 <details>
 <summary>Review tips to improve ${PRFile}</summary>
 
-${vfile_reporter_default()(err || file)}
+${file}
 
 </details>
 `
