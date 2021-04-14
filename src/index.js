@@ -45,6 +45,8 @@ const octokit = github.getOctokit(github_token);
         .use(indefiniteArticle)
         .use(stringify)
         .process(data, (err, file) => {
+          console.log('error', err);
+          console.log('file', file);
           const body = `
 <details>
 <summary>Review tips to improve ${PRFile}</summary>
