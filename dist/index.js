@@ -16037,6 +16037,9 @@ var dictionary_en_gb_default = /*#__PURE__*/__nccwpck_require__.n(dictionary_en_
 // EXTERNAL MODULE: ./node_modules/vfile-reporter/index.js
 var vfile_reporter = __nccwpck_require__(8366);
 var vfile_reporter_default = /*#__PURE__*/__nccwpck_require__.n(vfile_reporter);
+// EXTERNAL MODULE: ./node_modules/vfile-statistics/index.js
+var vfile_statistics = __nccwpck_require__(788);
+var vfile_statistics_default = /*#__PURE__*/__nccwpck_require__.n(vfile_statistics);
 // EXTERNAL MODULE: external "fs"
 var external_fs_ = __nccwpck_require__(5747);
 var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
@@ -16047,6 +16050,7 @@ var external_path_default = /*#__PURE__*/__nccwpck_require__.n(external_path_);
 
 const github = __nccwpck_require__(245);
 const core = __nccwpck_require__(9326);
+
 
 
 
@@ -16091,15 +16095,25 @@ const octokit = github.getOctokit(github_token);
         .use((retext_indefinite_article_default()))
         .use((retext_stringify_default()))
         .process(data, (err, file) => {
-          console.log('error', err);
-          console.log('file', file);
+          console.error(vfile_reporter_default()(file));
+
+          const reportStats = vfile_statistics_default()(file);
+          const fatal = reportStats.fatal ? `There are fatal ${reportStats.fatal} issues ` : '';
+          const warn = reportStats.warn ? `There are warning ${reportStats.warn} issues ` : '';
+          const info = reportStats.info ? `There are info ${reportStats.info} issues ` : '';
+          const nonfatal = reportStats.nonfatal ? `There are nonfatal ${reportStats.nonfatal} issues ` : '';
+          const total = reportStats.total ? `There are ${reportStats.total} total issues ` : '';
+
           const body = `
-<details>
-<summary>Review tips to improve ${PRFile}</summary>
+# Review tips to improve ${PRFile}
 
-${vfile_reporter_default()(file)}
+Please check the Github Action to see what can be improved
 
-</details>
+${fatal}
+${warn}
+${info}
+${nonfatal}
+${total}
 `
           octokit.issues.createComment({
             owner,

@@ -14,6 +14,7 @@ import indefiniteArticle from 'retext-indefinite-article';
 import stringify from 'retext-stringify';
 import dictionary from 'dictionary-en-gb';
 import report from 'vfile-reporter';
+import stats from 'vfile-statistics';
 
 const github_token = core.getInput('github_token');
 const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
@@ -45,15 +46,25 @@ const octokit = github.getOctokit(github_token);
         .use(indefiniteArticle)
         .use(stringify)
         .process(data, (err, file) => {
-          console.log('error', err);
-          console.log('file', file);
+          console.error(report(file));
+
+          const reportStats = stats(file);
+          const fatal = reportStats.fatal ? `There are fatal ${reportStats.fatal} issues ` : '';
+          const warn = reportStats.warn ? `There are warning ${reportStats.warn} issues ` : '';
+          const info = reportStats.info ? `There are info ${reportStats.info} issues ` : '';
+          const nonfatal = reportStats.nonfatal ? `There are nonfatal ${reportStats.nonfatal} issues ` : '';
+          const total = reportStats.total ? `There are ${reportStats.total} total issues ` : '';
+
           const body = `
-<details>
-<summary>Review tips to improve ${PRFile}</summary>
+# Review tips to improve ${PRFile}
 
-${report(file)}
+Please check the Github Action to see what can be improved
 
-</details>
+${fatal}
+${warn}
+${info}
+${nonfatal}
+${total}
 `
           octokit.issues.createComment({
             owner,
