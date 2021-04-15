@@ -49,21 +49,13 @@ const octokit = github.getOctokit(github_token);
           console.error(report(file));
 
           const reportStats = stats(file);
-          const fatal = reportStats.fatal ? `There are fatal ${reportStats.fatal} issues ` : '';
-          const warn = reportStats.warn ? `There are warning ${reportStats.warn} issues ` : '';
-          const info = reportStats.info ? `There are info ${reportStats.info} issues ` : '';
-          const nonfatal = reportStats.nonfatal ? `There are nonfatal ${reportStats.nonfatal} issues ` : '';
-          const total = reportStats.total ? `There are ${reportStats.total} total issues ` : '';
-
+          const total = reportStats.total ? `⚠️ There are ${reportStats.total} total issues to review` : '';
+          if (reportStats.total) {
           const body = `
-# Review tips to improve ${PRFile}
+### Review tips
 
-Please check the Github Action to see what can be improved
+Please check the Github Action to see what can be improved for ${PRFile}.
 
-${fatal}
-${warn}
-${info}
-${nonfatal}
 ${total}
 `
           octokit.issues.createComment({
@@ -72,6 +64,7 @@ ${total}
             issue_number: pull_request,
             body
           });
+        }
         })
     }
   })
